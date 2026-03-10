@@ -1092,15 +1092,10 @@ def show_invoice_list():
                     invoice_date_str = str(datetime.now().date())
                 
                 new_rate_api = get_exchange_rate_from_api(invoice_date_str)
-                rate_key = f"edit_rate_{selected_idx}"
                 if new_rate_api:
-                    st.session_state[rate_key] = new_rate_api
-                    st.success(f"✅ Rate ใหม่: {new_rate_api:.4f}")
-                    st.rerun()
+                    st.success(f"✅ Rate ใหม่: {new_rate_api:.4f} - กดปุ่มบันทึกเพื่อใช้ค่านี้")
                 else:
-                    st.session_state[rate_key] = 35.0
-                    st.warning("⚠️ ไม่ได้ Rate จาก API ใช้ค่า 35.0")
-                    st.rerun()
+                    st.warning("⚠️ ไม่ได้ Rate จาก API")
         
         # Update button
         if st.button("💾 บันทึกการแก้ไข", key=f"save_{selected_idx}"):
