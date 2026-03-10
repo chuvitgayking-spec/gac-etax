@@ -135,6 +135,11 @@ def load_invoices_from_db():
                         if location_cell.value and 'Bangkok' in str(location_cell.value):
                             invoice_no = 'BKK' + invoice_no
                     
+                    # Get Customer Name from column 7 (Billing Party)
+                    cust_cell = sheet.cell(row=5, column=7)
+                    if cust_cell.value:
+                        customer_name = str(cust_cell.value).strip()
+                    
                     # Get Job Number from column 28 (the 5-digit number like 74452)
                     job_cell = sheet.cell(row=6, column=28)
                     if job_cell.value:
