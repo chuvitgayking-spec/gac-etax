@@ -249,30 +249,92 @@ def get_known_items():
 # BOT API CONNECTION
 # ============================================
 
-def get_bot_token():
-    """Get BOT API token using secrets"""
-    try:
-        # Try to get from streamlit secrets
-        client_id = st.secrets.get("BOT_CLIENT_ID", "")
-        client_secret = st.secrets.get("BOT_CLIENT_SECRET", "")
-        
-        if client_id and client_secret:
-            # Call BOT API to get token
-            # This is a placeholder - replace with actual API endpoint
-            import requests
-            response = requests.post(
-                "https://api.example.com/oauth/token",
-                data={
-                    "grant_type": "client_credentials",
-                    "client_id": client_id,
-                    "client_secret": client_secret
-                }
-            )
-            if response.status_code == 200:
-                return response.json().get("access_token")
-    except Exception as e:
-        st.warning(f"BOT API not configured: {e}")
+def get_bot_credentials():
+    """Get BOT API credentials from secrets"""
+    # Try different secret names
+    token = st.secrets.get("BOT_API_TOKEN", "") or \
+            st.secrets.get("BOT_CLIENT_ID", "") or \
+            st.secrets.get("BOT_CLIENT_SECRET", "")
     
+    if not token:
+        # Check local file
+        secrets_path = os.path.join(os.path.dirname(__file__), '.streamlit', 'secrets.toml')
+        if os.path.exists(secrets_path):
+            with open(secrets_path, 'r') as f:
+                content = f.read()
+                for line in content.split('\n'):
+                    if 'BOT' in line and '=' in line:
+                        parts = line.split('=')
+                        if len(parts) > 1:
+                            val = parts[1].strip().strip('"')
+                            if val:
+                                token = val
+                                break
+    
+    return token
+
+def get_exchange_rate_from_api(date_str=None):
+    """Get USD/THB exchange rate from Exchange Rate API"""
+    import requests
+    
+    # First try using stored BOT credentials
+    token = get_bot_credentials()
+    
+    if token:
+        try:
+            # Try Bank of Thailand API
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }
+            
+            # Try BOT API endpoints
+            from datetime import datetime
+            date = date_str or datetime.now().strftime('%Y-%m-%d')
+            
+            endpoints = [
+                f"https://api.bot.go.th/v2/reference-rate?date={date}&currency=USD",
+            ]
+            
+            for endpoint in endpoints:
+                try:
+                    response = requests.get(endpoint, headers=headers, timeout=5)
+                    if response.status_code == 200:
+                        data = response.json()
+                        if 'data' in data:
+                            rate = float(data['data'].get('mid', 0))
+                            if rate > 0:
+                                return rate
+                except:
+                    continue
+        except:
+            pass
+    
+    # Fallback: Use public Exchange Rate API (free, no key required)
+    try:
+        # Using frankfurter.app (free, no API key needed)
+        if date_str:
+            # Try to parse date
+            from datetime import datetime
+            try:
+                d = datetime.strptime(str(date_str), '%Y-%m-%d')
+                date = d.strftime('%Y-%m-%d')
+            except:
+                date = datetime.now().strftime('%Y-%m-%d')
+        else:
+            date = datetime.now().strftime('%Y-%m-%d')
+        
+        url = f"https://api.frankfurter.app/{date}?from=USD&to=THB"
+        response = requests.get(url, timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'rates' in data and 'THB' in data['rates']:
+                return float(data['rates']['THB'])
+    except:
+        pass
+    
+    # If all fails, return None to use manual rate
     return None
 
 # ============================================
@@ -424,9 +486,10 @@ def main():
     st.sidebar.title("🏢 GAC e-Tax System")
     
     # BOT API Status
-    token = get_bot_token()
-    if token:
+    creds = get_bot_credentials()
+    if creds:
         st.sidebar.success("✅ BOT API Connected")
+        st.sidebar.code(f"Token: {creds[:20]}...")
     else:
         st.sidebar.info("ℹ️ BOT API: Not configured (OK for local)")
     
@@ -448,90 +511,244 @@ def main():
 def show_upload():
     st.markdown('<p class="main-header">📤 Upload CSV Invoice</p>', unsafe_allow_html=True)
     
-    uploaded_file = st.file_uploader("เลือกไฟล์ CSV", type=['csv', 'xlsx', 'xls'])
+    # Initialize session state for uploaded invoices if not exists
+    if 'uploaded_invoices' not in st.session_state:
+        st.session_state['uploaded_invoices'] = []
     
-    if uploaded_file:
-        # Process in memory
-        content = uploaded_file.getvalue()
+    # Show sidebar with list of uploaded invoices
+    show_uploaded_list_sidebar()
+    
+    # File uploader - accept multiple files by default
+    st.markdown("### 📤 อัปโหลดไฟล์ CSV/Excel")
+    uploaded_files = st.file_uploader(
+        "เลือกไฟล์ (เลือกได้หลายไฟล์)", 
+        type=['csv', 'xlsx', 'xls'], 
+        accept_multiple_files=True,
+        key="file_uploader"
+    )
+    
+    if uploaded_files:
+        st.markdown(f"### 📚 อัปโหลด {len(uploaded_files)} ไฟล์")
         
-        if uploaded_file.name.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(BytesIO(content))
-            content = df.to_csv(index=False).encode('utf-8')
+        # Process each file
+        new_invoices = []
         
-        # Store in session state
-        st.session_state['raw_content'] = content
-        st.session_state['filename'] = uploaded_file.name
+        for uploaded_file in uploaded_files:
+            # Check if already uploaded
+            already_exists = any(inv.get('filename') == uploaded_file.name for inv in st.session_state['uploaded_invoices'])
+            
+            if already_exists:
+                st.info(f"📄 {uploaded_file.name} - มีอยู่แล้ว")
+                continue
+            
+            with st.expander(f"📄 {uploaded_file.name}"):
+                try:
+                    invoice_data = process_single_file(uploaded_file, return_data=True)
+                    if invoice_data:
+                        # Add to session state
+                        st.session_state['uploaded_invoices'].append(invoice_data)
+                        new_invoices.append(invoice_data)
+                except Exception as e:
+                    st.error(f"Error: {e}")
         
-        # Process items
-        items = process_csv_in_memory(content, uploaded_file.name)
-        st.session_state['items'] = items
+        if new_invoices:
+            st.success(f"✅ เพิ่ม {len(new_invoices)} ไฟล์สำเร็จ!")
         
-        st.success(f"✅ อัปโหลดสำเร็จ: {uploaded_file.name}")
+        # Show summary of all uploaded
+        if st.session_state['uploaded_invoices']:
+            st.markdown("### 📊 สรุปไฟล์ที่อัปโหลดแล้ว")
+            summary_data = []
+            for inv in st.session_state['uploaded_invoices']:
+                summary_data.append({
+                    'File': inv.get('filename', 'Unknown'),
+                    'Invoice': inv.get('invoice_no', ''),
+                    'Customer': inv.get('customer_name', '')[:20],
+                    'Total (USD)': f"${float(inv['total_amount']):,.2f}",
+                    'Total (THB)': f"฿{float(inv['total_thb']):,.2f}"
+                })
+            
+            st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
+            
+            # Set batch invoices for preview
+            st.session_state['batch_invoices'] = st.session_state['uploaded_invoices']
+            
+            st.info("👉 ไปที่เมนู 'Preview' เพื่อดูและออกเอกสาร")
+
+def show_uploaded_list_sidebar():
+    """Show list of uploaded invoices in sidebar"""
+    if 'uploaded_invoices' in st.session_state and st.session_state['uploaded_invoices']:
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 📋 Invoice ที่อัปโหลดแล้ว")
         
-        # Show items preview
-        st.markdown("### 📋 Items Found")
+        for i, inv in enumerate(st.session_state['uploaded_invoices']):
+            filename = inv.get('filename', inv.get('invoice_no', f'Invoice {i+1}'))
+            customer = inv.get('customer_name', '')[:25]
+            total = f"${float(inv['total_amount']):,.2f}"
+            
+            st.sidebar.code(f"{i+1}. {filename}")
+            st.sidebar.caption(f"   {customer}")
+            st.sidebar.caption(f"   Total: {total}")
         
-        # Allow editing tax category
-        mapping = DEFAULT_MAPPING.copy()
-        
-        for item in items:
-            col1, col2, col3 = st.columns([1, 4, 2])
-            with col1:
-                st.write(f"**{item['item_no']}**")
-            with col2:
-                st.write(item['description'])
-            with col3:
-                # Determine current category
-                current_cat = determine_category(item['description'], mapping)
-                
-                # Special handling for OCEAN FREIGHT
-                if 'OCEAN' in item['description'].upper():
-                    category = st.selectbox(
-                        "Category",
-                        ["NON_VAT", "PARTIAL_VAT", "VAT_7"],
-                        index=["NON_VAT", "PARTIAL_VAT", "VAT_7"].index(current_cat),
-                        key=f"cat_{item['item_no']}"
-                    )
-                    # Show input for partial VAT amount
-                    if category == "PARTIAL_VAT":
-                        vat_input = st.number_input(
-                            "VAT Amount (THB)",
-                            min_value=0.0,
-                            value=float(item['amount']) * 0.07,
-                            key=f"vat_{item['item_no']}"
-                        )
-                        item['manual_vat'] = vat_input
-                    item['category'] = category
-                else:
-                    category = st.selectbox(
-                        "Category",
-                        ["NON_VAT", "VAT_7"],
-                        index=["NON_VAT", "VAT_7"].index(current_cat) if current_cat in ["NON_VAT", "VAT_7"] else 1,
-                        key=f"cat_{item['item_no']}"
-                    )
-                    item['category'] = category
-        
-        # Exchange rate
-        st.markdown("### 💱 Exchange Rate")
-        exchange_rate = st.number_input("USD/THB", value=30.909, min_value=1.0, step=0.001)
-        st.session_state['exchange_rate'] = exchange_rate
-        
-        # Invoice info
-        col1, col2 = st.columns(2)
+        # Clear all button
+        if st.sidebar.button("🗑️ ลบทั้งหมด", key="clear_all"):
+            st.session_state['uploaded_invoices'] = []
+            st.session_state['batch_invoices'] = []
+            st.rerun()
+
+def process_single_file(uploaded_file, return_data=False):
+    """Process a single file"""
+    # Process in memory
+    content = uploaded_file.getvalue()
+    
+    if uploaded_file.name.endswith(('.xlsx', '.xls')):
+        df = pd.read_excel(BytesIO(content))
+        content = df.to_csv(index=False).encode('utf-8')
+    
+    # Store in session state
+    st.session_state['raw_content'] = content
+    st.session_state['filename'] = uploaded_file.name
+    
+    # Process items
+    items = process_csv_in_memory(content, uploaded_file.name)
+    st.session_state['items'] = items
+    
+    st.success(f"✅ อัปโหลดสำเร็จ: {uploaded_file.name}")
+    
+    # Show items preview
+    st.markdown("### 📋 Items Found")
+    
+    # Allow editing tax category
+    mapping = DEFAULT_MAPPING.copy()
+    
+    for item in items:
+        col1, col2, col3 = st.columns([1, 4, 2])
         with col1:
-            invoice_no = st.text_input("Invoice No", value="3101523543")
+            st.write(f"**{item['item_no']}**")
         with col2:
-            invoice_date = st.text_input("Date", value="10 Mar 2026")
+            st.write(item['description'])
+        with col3:
+            current_cat = determine_category(item['description'], mapping)
+            
+            if 'OCEAN' in item['description'].upper():
+                category = st.selectbox(
+                    "Category",
+                    ["NON_VAT", "PARTIAL_VAT", "VAT_7"],
+                    index=["NON_VAT", "PARTIAL_VAT", "VAT_7"].index(current_cat),
+                    key=f"cat_{uploaded_file.name}_{item['item_no']}"
+                )
+                if category == "PARTIAL_VAT":
+                    vat_input = st.number_input(
+                        "VAT Amount (THB)",
+                        min_value=0.0,
+                        value=float(item['amount']) * 0.07,
+                        key=f"vat_{uploaded_file.name}_{item['item_no']}"
+                    )
+                    item['manual_vat'] = vat_input
+                item['category'] = category
+            else:
+                category = st.selectbox(
+                    "Category",
+                    ["NON_VAT", "VAT_7"],
+                    index=["NON_VAT", "VAT_7"].index(current_cat) if current_cat in ["NON_VAT", "VAT_7"] else 1,
+                    key=f"cat_{uploaded_file.name}_{item['item_no']}"
+                )
+                item['category'] = category
+    
+    # Date and Exchange rate
+    st.markdown("### 📅 วันที่ & 💱 อัตราแลกเปลี่ยน")
+    
+    # Date selector
+    invoice_date = st.date_input("วันที่ออก Receipt", value=datetime.now().date(), key=f"date_{uploaded_file.name}")
+    
+    # Try to get rate from API, fallback to manual
+    api_rate = get_exchange_rate_from_api(str(invoice_date))
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.caption(f"📅 วันที่: {invoice_date}")
+        if api_rate:
+            st.success(f"📈 Rate อัตโนมัติ: {api_rate:.4f} THB/USD")
+            exchange_rate = api_rate
+        else:
+            st.warning("📌 ไม่สามารถดึง Rate อัตโนมัติได้")
+            exchange_rate = st.number_input("💱 ใส่อัตราแลกเปลี่ยน USD/THB", value=30.909, min_value=1.0, step=0.001, key=f"rate_{uploaded_file.name}")
+    st.session_state['exchange_rate'] = exchange_rate
+    
+    # Invoice info
+    col1, col2 = st.columns(2)
+    with col1:
+        invoice_no = st.text_input("Invoice No", value="3101523543", key=f"inv_{uploaded_file.name}")
+    with col2:
+        invoice_date_str = st.text_input("วันที่ (DD MMM YYYY)", value=invoice_date.strftime("%d %b %Y") if hasattr(invoice_date, 'strftime') else str(invoice_date), key=f"date_str_{uploaded_file.name}")
+    
+    customer_name = st.text_input("Customer Name", value="Rock-it Cargo Pte. Ltd.", key=f"cust_{uploaded_file.name}")
+    
+    info = {
+        'invoice_no': invoice_no,
+        'invoice_date': str(invoice_date),
+        'customer_name': customer_name,
+        'filename': uploaded_file.name
+    }
+    st.session_state['invoice_info'] = info
+    
+    if return_data:
+        # Calculate totals for batch
+        return calculate_invoice(items, exchange_rate, info)
+    
+    st.info("👉 ไปที่เมนู 'Preview' เพื่อดูและออกเอกสาร")
+
+def calculate_invoice(items, exchange_rate, info):
+    """Calculate invoice totals"""
+    from decimal import Decimal
+    
+    subtotal = Decimal('0')
+    vat_total = Decimal('0')
+    processed_items = []
+    
+    for item in items:
+        amount = Decimal(str(item['amount']))
+        category = item.get('category', 'VAT_7')
         
-        customer_name = st.text_input("Customer Name", value="Rock-it Cargo Pte. Ltd.")
+        if category == 'NON_VAT':
+            vat_rate = 0
+            vat_amount = Decimal('0')
+        elif category == 'PARTIAL_VAT':
+            vat_rate = 7
+            vat_amount = Decimal(str(item.get('manual_vat', 0)))
+        else:
+            vat_rate = 7
+            vat_amount = amount * Decimal('0.07')
         
-        st.session_state['invoice_info'] = {
-            'invoice_no': invoice_no,
-            'invoice_date': invoice_date,
-            'customer_name': customer_name
-        }
+        amount_thb = amount * Decimal(str(exchange_rate))
         
-        st.info("👉 ไปที่เมนู 'Preview' เพื่อดูและออกเอกสาร")
+        subtotal += amount
+        vat_total += vat_amount
+        
+        processed_items.append({
+            'item_no': item['item_no'],
+            'description': item['description'],
+            'amount': amount,
+            'category': category,
+            'vat_rate': vat_rate,
+            'vat_amount': vat_amount,
+            'amount_thb': amount_thb
+        })
+    
+    total = subtotal + vat_total
+    total_thb = total * Decimal(str(exchange_rate))
+    
+    return {
+        'filename': info.get('filename', ''),
+        'invoice_no': info.get('invoice_no', ''),
+        'invoice_date': info.get('invoice_date', ''),
+        'customer_name': info.get('customer_name', ''),
+        'exchange_rate': exchange_rate,
+        'subtotal': subtotal,
+        'vat_amount': vat_total,
+        'total_amount': total,
+        'total_thb': total_thb,
+        'items': processed_items
+    }
 
 def show_settings():
     st.markdown('<p class="main-header">⚙️ Tax Mapping Settings</p>', unsafe_allow_html=True)
@@ -552,6 +769,11 @@ def show_settings():
 
 def show_preview():
     st.markdown('<p class="main-header">👁️ Preview & Issue Invoice</p>', unsafe_allow_html=True)
+    
+    # Check for batch invoices first
+    if 'batch_invoices' in st.session_state and st.session_state['batch_invoices']:
+        show_batch_preview()
+        return
     
     if 'items' not in st.session_state:
         st.warning("⚠️ กรุณาอัปโหลดไฟล์ก่อน")
@@ -665,6 +887,90 @@ def show_preview():
                 mime="application/xml"
             )
 
+
+
+def show_batch_preview():
+    """Preview and issue multiple invoices"""
+    batch = st.session_state['batch_invoices']
+    
+    st.markdown(f"### 📚 {len(batch)} Invoices Ready")
+    
+    # Select which invoice to preview
+    options = [f"{inv.get('filename', inv.get('invoice_no', 'Unknown'))} - {inv.get('customer_name', '')[:20]}" for inv in batch]
+    options.append("📋 ทั้งหมด")
+    
+    selected = st.selectbox("เลือก Invoice ที่จะ Preview:", options, key="batch_select")
+    
+    if selected == "📋 ทั้งหมด":
+        # Show all invoices summary
+        for i, inv in enumerate(batch):
+            with st.expander(f"📄 {inv.get('filename', inv.get('invoice_no', f'Invoice {i+1}'))}"):
+                show_single_invoice_preview(inv, key_suffix=f"_batch_{i}")
+    else:
+        # Find selected invoice
+        idx = options.index(selected)
+        inv = batch[idx]
+        show_single_invoice_preview(inv, key_suffix="_batch_selected")
+
+def show_single_invoice_preview(invoice_data, key_suffix=""):
+    """Preview a single invoice"""
+    # Summary
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Running No", "Auto")
+    with col2:
+        st.metric("Subtotal", f"${float(invoice_data['subtotal']):,.2f}")
+    with col3:
+        st.metric("VAT", f"${float(invoice_data['vat_amount']):,.2f}")
+    with col4:
+        st.metric("Total", f"${float(invoice_data['total_amount']):,.2f}")
+    
+    # Items table
+    st.markdown("#### รายการ")
+    df = pd.DataFrame(invoice_data['items'])
+    st.dataframe(df[['item_no', 'description', 'amount', 'vat_rate', 'vat_amount']], use_container_width=True)
+    
+    # Generate buttons
+    st.markdown("### 🧾 ออกเอกสาร")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        gen_pdf = st.checkbox("📄 PDF", value=True, key=f"pdf{key_suffix}")
+    with col2:
+        gen_xml = st.checkbox("📄 e-Tax XML", value=False, key=f"xml{key_suffix}")
+    
+    if st.button("🎫 Generate & Download", type="primary", key=f"gen{key_suffix}"):
+        # Get running number
+        running_no = get_next_running_number('GAC')
+        
+        invoice_data['running_no'] = running_no
+        invoice_data['file_source'] = invoice_data.get('filename', '')
+        
+        # Save to database
+        save_invoice(invoice_data)
+        
+        st.success(f"✅ Running No: {running_no}")
+        
+        # Generate outputs
+        if gen_pdf:
+            pdf_buffer = generate_pdf(invoice_data)
+            st.download_button(
+                "📥 Download PDF",
+                pdf_buffer.getvalue(),
+                file_name=f"Receipt_{running_no}.pdf",
+                mime="application/pdf",
+                key=f"dl_pdf{key_suffix}"
+            )
+        
+        if gen_xml:
+            xml_buffer = generate_xml(invoice_data)
+            st.download_button(
+                "📥 Download XML",
+                xml_buffer.getvalue(),
+                file_name=f"ETax_{running_no}.xml",
+                mime="application/xml",
+                key=f"dl_xml{key_suffix}"
+            )
 def show_history():
     st.markdown('<p class="main-header">📊 Invoice History</p>', unsafe_allow_html=True)
     
