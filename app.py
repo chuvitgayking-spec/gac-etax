@@ -7,6 +7,8 @@ Cloud-Ready Version with Streamlit
 
 import sqlite3
 import json
+import re
+import os
 
 DB_PATH = '/Users/chuvit/.openclaw/workspace/gac_etax/data/invoices.db'
 
