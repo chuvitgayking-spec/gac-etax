@@ -44,65 +44,61 @@ def save_invoice_to_db(invoice_data, status='pending'):
     return invoice_id
 
 def load_invoices_from_db():
-    """Load all invoices from database"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT * FROM invoices ORDER BY created_at DESC')
-    rows = c.fetchall()
-    conn.close()
-    
+    """Load invoices from uploaded files"""
+    files = list_uploaded_files()
     invoices = []
-    for row in rows:
-        invoices.append({
-            'id': row[0],
-            'filename': row[1],
-            'invoice_no': row[2],
-            'invoice_date': row[3],
-            'customer_name': row[4],
-            'job_number': row[5],
-            'awb': row[6],
-            'job_ref': row[7],
-            'exchange_rate': row[8],
-            'total_amount': row[9],
-            'total_thb': row[10],
-            'items': json.loads(row[11]) if row[11] else [],
-            'created_at': row[12]
-        })
+    
+    for i, f in enumerate(files):
+        try:
+            filepath = f['filepath']
+            filename = f['filename']
+            
+            # Read file content
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
+                content = file.read()
+            
+            # Extract basic info
+            import re
+            inv_match = re.search(r'Invoice No[.,]: ([\w-]+)', content)
+            invoice_no = inv_match.group(1) if inv_match else filename.split('_', 1)[-1].replace('.csv', '').replace('.xlsx', '').replace('.xls', '')
+            
+            job_match = re.search(r': (\d{5,6}) ,.*?Job', content)
+            job_number = job_match.group(1) if job_match else ''
+            
+            awb_match = re.search(r'([A-Z]{3}-\d{6}-[A-Z])', content)
+            awb = awb_match.group(1) if awb_match else ''
+            
+            date_match = re.search(r'Invoice Date[.,]: (\d+ \w+ \d{4})', content)
+            invoice_date = date_match.group(1) if date_match else ''
+            
+            cust_match = re.search(r'Attention[,]: ([^
+,]+)', content)
+            customer_name = cust_match.group(1).strip() if cust_match else 'Unknown'
+            
+            total_match = re.search(r'Total Amount of Invoice.*?:.*?\$?([\d,]+\.?\d*)', content)
+            total_amount = float(total_match.group(1).replace(',', '')) if total_match else 0
+            
+            invoices.append({
+                'id': i,
+                'filename': filename,
+                'filepath': filepath,
+                'invoice_no': invoice_no,
+                'invoice_date': invoice_date,
+                'customer_name': customer_name,
+                'job_number': job_number,
+                'awb': awb,
+                'exchange_rate': 30.909,
+                'total_amount': total_amount,
+                'total_thb': total_amount * 30.909,
+                'items': [],
+                'status': 'pending',
+                'created_at': filename[:8]
+            })
+        except Exception as e:
+            print(f"Error: {e}")
+            continue
     
     return invoices
-import streamlit as st
-import os
-import sys
-import pandas as pd
-from io import BytesIO, StringIO
-from decimal import Decimal
-from datetime import datetime
-
-# Page config
-st.set_page_config(
-    page_title="e-Tax Invoice System - GAC Thailand",
-    page_icon="📄",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# ============================================
-# CONFIGURATION
-# ============================================
-
-# Database path (in project folder for cloud)
-DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'etax.db')
-
-# Company info
-COMPANY_NAME = "GULF AGENCY COMPANY (THAILAND) LTD."
-COMPANY_TAX_ID = "0105535169497"
-COMPANY_ADDRESS = "26/30-31 9TH FL., ORAKARN BLDG., SOI CHIDLOM, PLOENCHIT RD., LUMPINEE, PATHUMWAN, BANGKOK"
-
-# ============================================
-# DATABASE MODULE (SQLite)
-# ============================================
-
-import sqlite3
 
 def get_db_connection():
     """Get database connection"""
