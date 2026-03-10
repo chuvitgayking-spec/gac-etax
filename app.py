@@ -1082,21 +1082,11 @@ def show_invoice_list():
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
         col1, col2 = st.columns([3, 1])
         with col1:
-            # Check session state for rate first
-            rate_key = f"edit_rate_{selected_idx}"
-            if rate_key not in st.session_state:
-                st.session_state[rate_key] = inv.get('exchange_rate', 30.909)
-            
-            new_rate = st.number_input("Exchange Rate (USD/THB)", 
-                                       value=float(st.session_state[rate_key]), 
-                                       min_value=1.0, step=0.001, 
-                                       key=rate_key)
-            # Update session state with current value
-            st.session_state[rate_key] = new_rate
+            new_rate = st.number_input("Exchange Rate (USD/THB)", value=float(inv.get("exchange_rate", 30.909)), min_value=1.0, step=0.001, key=f"edit_rate_{selected_idx}")
         with col2:
             st.write("")
             st.write("")
-            if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):
+            if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):, key=f"refresh_edit_{selected_idx}"):
                 invoice_date_str = inv.get('invoice_date', '')
                 if not invoice_date_str:
                     invoice_date_str = str(datetime.now().date())
