@@ -314,39 +314,31 @@ def init_database():
     conn.commit()
     conn.close()
 
-def get_next_running_no(prefix='GAC', year=None):
+def get_next_running_no():
     """Get next running number"""
-    if year is None:
-        year = datetime.now().year
+    import sqlite3
+    from datetime import datetime
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    year_short = str(datetime.now().year)[-2:]
     
-    cursor.execute('''
-        SELECT last_number FROM running_numbers 
-        WHERE prefix = ? AND year = ?
-    ''', (prefix, year))
+    conn = sqlite3.connect(INVOICE_DB)
+    c = conn.cursor()
     
-    row = cursor.fetchone()
+    try:
+        c.execute(f"SELECT running_no FROM invoices WHERE running_no LIKE '{year_short}-%' ORDER BY id DESC LIMIT 1")
+        row = c.fetchone()
+    except:
+        row = None
     
-    if row:
-        new_number = row[0] + 1
-        cursor.execute('''
-            UPDATE running_numbers 
-            SET last_number = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE prefix = ? AND year = ?
-        ''', (new_number, prefix, year))
-    else:
-        new_number = 1
-        cursor.execute('''
-            INSERT INTO running_numbers (prefix, last_number, year)
-            VALUES (?, ?, ?)
-        ''', (prefix, 1, year))
-    
-    conn.commit()
     conn.close()
     
-    return f"{year}-{new_number:04d}"
+    if row:
+        last_no = row[0]
+        seq = int(last_no.split('-')[1]) + 1
+    else:
+        seq = 1
+    
+    return f"{year_short}-{seq:04d}"
 
 def save_invoice(invoice_data):
     """Save invoice to database"""
@@ -1406,7 +1398,7 @@ def show_pdf_preview(invoice_data, key_suffix=""):
         gen_xml = st.checkbox("📄 e-Tax XML", value=False, key=f"xml{key_suffix}")
     
     if st.button("🎫 Generate & Download", type="primary", key=f"gen{key_suffix}"):
-        running_no = get_next_running_no('GAC')
+        running_no = get_next_running_no()
         invoice_data['running_no'] = running_no
         invoice_data['file_source'] = invoice_data.get('filename', '')
         
@@ -1515,7 +1507,7 @@ def show_pdf_preview(invoice_data, key_suffix=""):
     
     if st.button("🎫 Generate & Download", type="primary"):
         # Get running number
-        running_no = get_next_running_no('GAC')
+        running_no = get_next_running_no()
         
         invoice_data = {
             'invoice_no': info.get('invoice_no', ''),
@@ -1622,7 +1614,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     
     if st.button("🎫 Generate & Download", type="primary", key=f"gen{key_suffix}"):
         # Get running number
-        running_no = get_next_running_no('GAC')
+        running_no = get_next_running_no()
         
         invoice_data['running_no'] = running_no
         invoice_data['file_source'] = invoice_data.get('filename', '')
