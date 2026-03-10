@@ -608,7 +608,7 @@ def generate_pdf(invoice_data):
     story.append(Spacer(1, 10))
     
     # Items
-    table_data = [['No', 'Description', 'Amount (USD)', 'VAT%', 'VAT', 'Amount (THB)']]
+    table_data = [['No', 'Description', 'Amount (THB)', 'VAT%', 'VAT', 'Amount (THB)']]
     
     for item in invoice_data.get('items', []):
         table_data.append([
@@ -633,9 +633,10 @@ def generate_pdf(invoice_data):
     
     # Totals in both USD and THB
     totals = [
-        ['Subtotal (USD):', f"${float(invoice_data['subtotal']):,.2f}", 'Subtotal (THB):', f"฿{float(invoice_data['subtotal']) * float(invoice_data['exchange_rate']):,.2f}"],
-        ['VAT 7% (USD):', f"${float(invoice_data['vat_amount']):,.2f}", 'VAT 7% (THB):', f"฿{float(invoice_data['vat_amount']) * float(invoice_data['exchange_rate']):,.2f}"],
-        ['TOTAL (USD):', f"${float(invoice_data['total_amount']):,.2f}", 'TOTAL (THB):', f"฿{float(invoice_data['total_thb']):,.2f}"],
+        ['Subtotal:', f"฿{float(invoice_data['subtotal']) * float(invoice_data['exchange_rate']):,.2f}"],
+        ['VAT 7%:', f"฿{float(invoice_data['vat_amount']) * float(invoice_data['exchange_rate']):,.2f}"],
+        ['TOTAL:', f"฿{float(invoice_data['total_thb']):,.2f}"],\
+
     ]
     
     totals_table = Table(totals, colWidths=[4*cm, 3*cm, 4*cm, 4*cm])
