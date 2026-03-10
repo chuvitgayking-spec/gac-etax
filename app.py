@@ -1258,7 +1258,11 @@ def show_pdf_preview(invoice_data, key_suffix=""):
     from decimal import Decimal
     
     exchange_rate = Decimal(str(invoice_data.get('exchange_rate', 30.909)))
-    running_no = invoice_data.get('running_no', 'XXXXXX')
+    # Generate running number
+    from datetime import datetime
+    current_year = datetime.now().year
+    year_short = str(current_year)[-2:]  # Get last 2 digits
+    running_no = f"{year_short}-0001"  # Default format
     invoice_no = invoice_data.get('invoice_no', '-')
     invoice_date = invoice_data.get('invoice_date', '-')
     customer = invoice_data.get('customer_name', 'Customer')
