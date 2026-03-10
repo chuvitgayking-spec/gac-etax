@@ -1386,14 +1386,18 @@ def show_pdf_preview(invoice_data, key_suffix=""):
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
     
-    # Preview PDF
-    if st.checkbox("👁️ Preview PDF", value=True, key=f"preview{key_suffix}"):
-        try:
-            from pdf_generator import generate_receipt_pdf
-            pdf_buffer = generate_receipt_pdf(invoice_data)
-            st.pdfViewer(pdf_buffer.getvalue(), use_container_width=True)
-        except Exception as e:
-            st.error(f"Preview error: {e}")
+    # Preview PDF - show download link
+    try:
+        from pdf_generator import generate_receipt_pdf
+        pdf_buffer = generate_receipt_pdf(invoice_data)
+        pdf_bytes = pdf_buffer.getvalue()
+        
+        # Show preview info
+        st.info(f"📄 PDF Ready - {len(pdf_bytes)/1024:.1f} KB")
+        
+        # Download button instead
+    except Exception as e:
+        st.error(f"Error: {e}")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -1490,14 +1494,18 @@ def show_pdf_preview(invoice_data, key_suffix=""):
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
     
-    # Preview PDF
-    if st.checkbox("👁️ Preview PDF", value=True, key=f"preview{key_suffix}"):
-        try:
-            from pdf_generator import generate_receipt_pdf
-            pdf_buffer = generate_receipt_pdf(invoice_data)
-            st.pdfViewer(pdf_buffer.getvalue(), use_container_width=True)
-        except Exception as e:
-            st.error(f"Preview error: {e}")
+    # Preview PDF - show download link
+    try:
+        from pdf_generator import generate_receipt_pdf
+        pdf_buffer = generate_receipt_pdf(invoice_data)
+        pdf_bytes = pdf_buffer.getvalue()
+        
+        # Show preview info
+        st.info(f"📄 PDF Ready - {len(pdf_bytes)/1024:.1f} KB")
+        
+        # Download button instead
+    except Exception as e:
+        st.error(f"Error: {e}")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -1593,14 +1601,18 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
     
-    # Preview PDF
-    if st.checkbox("👁️ Preview PDF", value=True, key=f"preview{key_suffix}"):
-        try:
-            from pdf_generator import generate_receipt_pdf
-            pdf_buffer = generate_receipt_pdf(invoice_data)
-            st.pdfViewer(pdf_buffer.getvalue(), use_container_width=True)
-        except Exception as e:
-            st.error(f"Preview error: {e}")
+    # Preview PDF - show download link
+    try:
+        from pdf_generator import generate_receipt_pdf
+        pdf_buffer = generate_receipt_pdf(invoice_data)
+        pdf_bytes = pdf_buffer.getvalue()
+        
+        # Show preview info
+        st.info(f"📄 PDF Ready - {len(pdf_bytes)/1024:.1f} KB")
+        
+        # Download button instead
+    except Exception as e:
+        st.error(f"Error: {e}")
     
     col1, col2 = st.columns(2)
     with col1:
