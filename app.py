@@ -1129,11 +1129,11 @@ def show_invoice_list():
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📤 อัปโหลดเพิ่ม"):
+        if st.button("📤 อัปโหลดเพิ่ม", key="btn_upload_more"):
             st.session_state['menu'] = '📤 Upload'
             st.rerun()
     with col2:
-        if st.button("👁️ ไป Preview"):
+        if st.button("👁️ ไป Preview", key="btn_go_preview"):
             st.session_state['batch_invoices'] = invoices
             st.session_state['menu'] = '👁️ Preview'
             st.rerun()
