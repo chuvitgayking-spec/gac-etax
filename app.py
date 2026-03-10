@@ -922,7 +922,7 @@ def process_single_file(uploaded_file, return_data=False):
             exchange_rate = api_rate
         else:
             st.warning("📌 ไม่สามารถดึง Rate อัตโนมัติได้")
-            exchange_rate = st.number_input("💱 USD/THB", value=30.909, min_value=1.0, step=0.001, key=f"rate_{uploaded_file.name}")
+            exchange_rate = st.number_input("💱 USD/THB", value=30.909, min_value=1.0, step=0.0001, key=f"rate_{uploaded_file.name}")
     with col2:
         st.write("")
         st.write("")
@@ -1091,7 +1091,7 @@ def show_invoice_list():
             
             new_rate = st.number_input("Exchange Rate (USD/THB)", 
                                        value=st.session_state[rate_key] if st.session_state[rate_key] > 0 else 0.0, 
-                                       min_value=0.0, step=0.001, 
+                                       min_value=0.0, step=0.0001, 
                                        key=f"edit_rate_{selected_idx}")
         with col2:
             st.write("")
