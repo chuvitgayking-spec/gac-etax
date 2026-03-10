@@ -71,8 +71,7 @@ def load_invoices_from_db():
             date_match = re.search(r'Invoice Date[.,]: (\d+ \w+ \d{4})', content)
             invoice_date = date_match.group(1) if date_match else ''
             
-            cust_match = re.search(r'Attention[,]: ([^
-,]+)', content)
+            cust_match = re.search(r'Attention[,]: ([^\n,]+)', content)
             customer_name = cust_match.group(1).strip() if cust_match else 'Unknown'
             
             total_match = re.search(r'Total Amount of Invoice.*?:.*?\$?([\d,]+\.?\d*)', content)
