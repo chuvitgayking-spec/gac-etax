@@ -1034,7 +1034,6 @@ def show_invoice_list():
     
     st.markdown(f"### 📋 รายการ Invoice ({len(invoices)} ใบ)")
     
-    st.markdown(f"### 📋 รายการ Invoice ({len(invoices)} ใบ)")
     
     # Show table with all invoices
     data = []
