@@ -157,8 +157,13 @@ def load_invoices_from_db():
                 cust_match = re.search(r'Attention[,:] ([^\n,]+)', content)
                 customer_name = cust_match.group(1).strip() if cust_match else 'Unknown'
                 
-                total_match = re.search(r'Total Amount of Invoice.*?:.*?\$?([\d,]+\.?\d*)', content)
-                total_amount = float(total_match.group(1).replace(',', '')) if total_match else 0
+                # Get total from column 17 (Due Amount THB)
+                total_cell = sheet.cell(row=2, column=17)
+                if total_cell.value:
+                    try:
+                        total_amount = float(str(total_cell.value).replace(',', ''))
+                    except:
+                        total_amount = 0
             
             invoices.append({
                 'id': i,
