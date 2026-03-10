@@ -1086,7 +1086,7 @@ def show_invoice_list():
         with col2:
             st.write("")
             st.write("")
-            if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):, key=f"refresh_edit_{selected_idx}"):
+            if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):
                 invoice_date_str = inv.get('invoice_date', '')
                 if not invoice_date_str:
                     invoice_date_str = str(datetime.now().date())
