@@ -15,7 +15,11 @@ def save_invoice_to_db(invoice_data, status='pending'):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
-    items_json = json.dumps(invoice_data.get('items', []))
+    items_list = invoice_data.get('items', [])
+    if isinstance(items_list, str):
+        items_json = items_list
+    else:
+        items_json = json.dumps(items_list)
     
     c.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
