@@ -95,6 +95,7 @@ def load_invoices_from_db():
             invoice_date = ''
             customer_name = ''
             total_amount = 0
+            items = []  # Default empty list
             
             # Check file type
             if filename.endswith(('.xlsx', '.xls')):
