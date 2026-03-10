@@ -114,18 +114,14 @@ def load_invoices_from_db():
                         if location_cell.value and 'Bangkok' in str(location_cell.value):
                             invoice_no = 'BKK' + invoice_no
                     
-                    # Look for more data in other cells
-                    for row_idx in range(1, 50):
-                        for col_idx in range(1, 30):
-                            cell_val = sheet.cell(row=row_idx, column=col_idx).value
-                            if cell_val:
-                                cell_str = str(cell_val)
-                                if 'Job' in cell_str and ':' in cell_str:
-                                    parts = cell_str.split(':')
-                                    if len(parts) > 1:
-                                        job_candidate = parts[-1].strip().replace(',', '')
-                                        if job_candidate.isdigit() and len(job_candidate) >= 5:
-                                            job_number = job_candidate
+                    # Look for Job Number in column 28
+                    job_cell = sheet.cell(row=5, column=28)
+                    if job_cell.value:
+                        job_str = str(job_cell.value).strip()
+                        if ':' in job_str:
+                            job_number = job_str.split(':')[-1].strip().replace(',', '')
+                        elif job_str.isdigit() and len(job_number) >= 5:
+                            job_number = job_str
                                 if 'Attention' in cell_str and ':' in cell_str:
                                     parts = cell_str.split(':')
                                     if len(parts) > 1:
