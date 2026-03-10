@@ -27,22 +27,31 @@ UPLOAD_DIR = os.environ.get('UPLOAD_DIR', '/tmp/uploads')
 def list_uploaded_files():
     """List all uploaded files"""
     upload_dir = UPLOAD_DIR
-    if upload_dir and not os.path.exists(upload_dir):
+    
+    # Try to create directory
+    if upload_dir:
         try:
-            os.makedirs(upload_dir, exist_ok=True)
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir, exist_ok=True)
         except:
             upload_dir = '/tmp/uploads'
-            os.makedirs(upload_dir, exist_ok=True)
+            try:
+                os.makedirs(upload_dir, exist_ok=True)
+            except:
+                pass
     
     files = []
     try:
-        for f in os.listdir(upload_dir):
-        filepath = os.path.join(UPLOAD_DIR, f)
-        if os.path.isfile(filepath):
-            files.append({'filename': f, 'filepath': filepath})
-        except:
+        if upload_dir and os.path.exists(upload_dir):
+            for f in os.listdir(upload_dir):
+                filepath = os.path.join(upload_dir, f)
+                if os.path.isfile(filepath):
+                    files.append({'filename': f, 'filepath': filepath})
+    except:
         pass
+    
     return sorted(files, key=lambda x: x['filename'], reverse=True)
+
 
 def save_uploaded_file(uploaded_file):
     """Save uploaded file to uploads directory"""
