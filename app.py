@@ -4,6 +4,65 @@ e-Tax Invoice System for GAC Thailand
 Cloud-Ready Version with Streamlit
 """
 
+
+import sqlite3
+import json
+
+DB_PATH = '/Users/chuvit/.openclaw/workspace/gac_etax/data/invoices.db'
+
+def save_invoice_to_db(invoice_data):
+    """Save invoice to database for persistence"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    items_json = json.dumps(invoice_data.get('items', []))
+    
+    c.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (invoice_data.get('filename', ''),
+         invoice_data.get('invoice_no', ''),
+         invoice_data.get('invoice_date', ''),
+         invoice_data.get('customer_name', ''),
+         invoice_data.get('job_number', ''),
+         invoice_data.get('awb', ''),
+         invoice_data.get('job_ref', ''),
+         invoice_data.get('exchange_rate', 30.909),
+         invoice_data.get('total_amount', 0),
+         invoice_data.get('total_thb', 0),
+         items_json))
+    
+    conn.commit()
+    invoice_id = c.lastrowid
+    conn.close()
+    return invoice_id
+
+def load_invoices_from_db():
+    """Load all invoices from database"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT * FROM invoices ORDER BY created_at DESC')
+    rows = c.fetchall()
+    conn.close()
+    
+    invoices = []
+    for row in rows:
+        invoices.append({
+            'id': row[0],
+            'filename': row[1],
+            'invoice_no': row[2],
+            'invoice_date': row[3],
+            'customer_name': row[4],
+            'job_number': row[5],
+            'awb': row[6],
+            'job_ref': row[7],
+            'exchange_rate': row[8],
+            'total_amount': row[9],
+            'total_thb': row[10],
+            'items': json.loads(row[11]) if row[11] else [],
+            'created_at': row[12]
+        })
+    
+    return invoices
 import streamlit as st
 import os
 import sys
@@ -550,6 +609,10 @@ def show_upload():
                     st.error(f"Error: {e}")
         
         if new_invoices:
+            for inv in new_invoices:
+                save_invoice_to_db(inv)
+            st.session_state['uploaded_invoices'] = load_invoices_from_db()
+            st.session_state['batch_invoices'] = st.session_state['uploaded_invoices']
             st.success(f"✅ เพิ่ม {len(new_invoices)} ไฟล์สำเร็จ!")
         
         # Show summary of all uploaded
@@ -589,6 +652,11 @@ def show_uploaded_list_sidebar():
         
         # Clear all button
         if st.sidebar.button("🗑️ ลบทั้งหมด", key="clear_all"):
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute('DELETE FROM invoices')
+            conn.commit()
+            conn.close()
             st.session_state['uploaded_invoices'] = []
             st.session_state['batch_invoices'] = []
             st.rerun()
