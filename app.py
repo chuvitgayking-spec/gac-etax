@@ -1046,87 +1046,124 @@ def show_pdf_preview(invoice_data, key_suffix=""):
     """Show PDF-like preview of invoice"""
     from decimal import Decimal
     
-    # Calculate THB totals
     exchange_rate = Decimal(str(invoice_data.get('exchange_rate', 30.909)))
+    running_no = invoice_data.get('running_no', 'XXXXXX')
+    invoice_no = invoice_data.get('invoice_no', '-')
+    invoice_date = invoice_data.get('invoice_date', '-')
+    customer = invoice_data.get('customer_name', 'Customer')
+    job_no = invoice_data.get('job_number', '-')
+    awb = invoice_data.get('awb', '-')
     
-    # Custom styled preview (like PDF)
-    st.markdown("---")
-    st.markdown(f"""
-    <div style="
-        border: 2px solid #1e3a5f;
-        border-radius: 10px;
-        padding: 20px;
-        background: white;
-        font-family: Arial, sans-serif;
-    ">
-        <h2 style="text-align: center; color: #1e3a5f; margin: 0;">ใบเสร็จรับเงิน / RECEIPT</h2>
-        <hr>
-        <table style="width: 100%;">
-            <tr>
-                <td><b>🏢 {invoice_data.get('customer_name', 'Customer')}</b></td>
-                <td style="text-align: right;"><b>Invoice No:</b> {invoice_data.get('invoice_no', '-')}</td>
-            </tr>
-            <tr>
-                <td colspan="2"><b>Job No:</b> {invoice_data.get('job_number', '-')} | <b>AWB:</b> {invoice_data.get('awb', '-')}</td>
-            </tr>
-            <tr>
-                <td><b>Date:</b> {invoice_data.get('invoice_date', '-')}</td>
-                <td style="text-align: right;"><b>Rate:</b> {exchange_rate} THB/USD</td>
-            </tr>
-        </table>
-        <hr>
-        <table style="width: 100%; border-collapse: collapse;" border="1">
-            <tr style="background: #f0f0f0;">
-                <th style="padding: 8px;">#</th>
-                <th style="padding: 8px;">Description</th>
-                <th style="padding: 8px; text-align: right;">USD</th>
-                <th style="padding: 8px; text-align: right;">VAT</th>
-                <th style="padding: 8px; text-align: right;">THB</th>
-            </tr>
-    """, unsafe_allow_html=True)
-    
-    # Show items in THB
-    for item in invoice_data.get('items', []):
-        usd = float(item.get('amount', 0))
-        vat = float(item.get('vat_amount', 0))
-        thb = usd * float(exchange_rate)
-        
-        st.markdown(f"""
-            <tr>
-                <td style="padding: 5px;">{item.get('item_no', '')}</td>
-                <td style="padding: 5px;">{item.get('description', '')[:35]}</td>
-                <td style="padding: 5px; text-align: right;">${usd:,.2f}</td>
-                <td style="padding: 5px; text-align: right;">{item.get('vat_rate', 0)}%</td>
-                <td style="padding: 5px; text-align: right;">฿{thb:,.2f}</td>
-            </tr>
-        """, unsafe_allow_html=True)
-    
-    # Totals in THB
+    # Calculate totals
     total_usd = float(invoice_data.get('total_amount', 0))
     total_vat = float(invoice_data.get('vat_amount', 0))
+    subtotal_usd = total_usd - total_vat
     total_thb = total_usd * float(exchange_rate)
+    subtotal_thb = subtotal_usd * float(exchange_rate)
+    vat_thb = total_vat * float(exchange_rate)
     
-    st.markdown(f"""
-        </table>
-        <hr>
-        <table style="width: 100%;">
+    # Build HTML receipt
+    html = f"""
+    <div style="
+        border: 2px solid #333;
+        border-radius: 5px;
+        padding: 15px;
+        background: white;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        max-width: 700px;
+        margin: 0 auto;
+    ">
+        <h3 style="text-align: center; color: #1e3a5f; margin: 5px 0;">GAC THAILAND CO., LTD.</h3>
+        <p style="text-align: center; margin: 2px 0; font-size: 11px;">9/2 Sathorn 39, South Sathorn Road, Yannawa, Sathorn</p>
+        <p style="text-align: center; margin: 2px 0; font-size: 11px;">Bangkok 10120, Thailand</p>
+        <p style="text-align: center; margin: 2px 0; font-size: 11px;">Tel: +66 2 676 1900 | Fax: +66 2 676 1990</p>
+        <p style="text-align: center; margin: 2px 0; font-size: 11px;">Tax ID: 0105548024532 | Branch: 00000</p>
+        
+        <hr style="border: 1px solid #333;">
+        
+        <h3 style="text-align: center; margin: 10px 0;">INVOICE / RECEIPT</h3>
+        
+        <table style="width: 100%; font-size: 11px;">
             <tr>
-                <td style="text-align: right;"><b>Subtotal:</b></td>
-                <td style="text-align: right;">${total_usd - total_vat:,.2f}</td>
+                <td style="width: 50%;"><b>Invoice No:</b> {invoice_no}</td>
+                <td style="width: 50%; text-align: right;"><b>Running No:</b> {running_no}</td>
             </tr>
             <tr>
-                <td style="text-align: right;"><b>VAT 7%:</b></td>
+                <td><b>Date:</b> {invoice_date}</td>
+                <td style="text-align: right;"><b>Job No:</b> {job_no}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><b>Customer:</b> {customer}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><b>AWB/Ref:</b> {awb}</td>
+            </tr>
+        </table>
+        
+        <hr style="border: 1px solid #333;">
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px;" border="1">
+            <tr style="background: #f0f0f0;">
+                <th style="padding: 6px; width: 10%;">#</th>
+                <th style="padding: 6px; width: 45%;">Description</th>
+                <th style="padding: 6px; width: 15%; text-align: right;">Qty</th>
+                <th style="padding: 6px; width: 15%; text-align: right;">Unit Price</th>
+                <th style="padding: 6px; width: 15%; text-align: right;">Amount (USD)</th>
+            </tr>
+    """
+    
+    # Add items
+    for item in invoice_data.get('items', []):
+        desc = item.get('description', '')[:30]
+        qty = item.get('quantity', 1)
+        unit_price = float(item.get('amount', 0)) / qty if qty else 0
+        amount = float(item.get('amount', 0))
+        
+        html += f"""
+            <tr>
+                <td style="padding: 4px;">{item.get('item_no', '')}</td>
+                <td style="padding: 4px;">{desc}</td>
+                <td style="padding: 4px; text-align: right;">{qty}</td>
+                <td style="padding: 4px; text-align: right;">${unit_price:.2f}</td>
+                <td style="padding: 4px; text-align: right;">${amount:,.2f}</td>
+            </tr>
+        """
+    
+    # Add totals
+    html += f"""
+        </table>
+        
+        <table style="width: 100%; font-size: 11px; margin-top: 10px;">
+            <tr>
+                <td style="width: 60%; text-align: right;">Subtotal:</td>
+                <td style="width: 20%; text-align: right;">${subtotal_usd:,.2f}</td>
+                <td style="width: 20%; text-align: right;">฿{subtotal_thb:,.2f}</td>
+            </tr>
+            <tr>
+                <td style="text-align: right;">VAT 7%:</td>
                 <td style="text-align: right;">${total_vat:,.2f}</td>
+                <td style="text-align: right;">฿{vat_thb:,.2f}</td>
             </tr>
-            <tr style="background: #e0e0e0; font-size: 18px;">
-                <td style="text-align: right; padding: 10px;"><b>TOTAL (THB):</b></td>
-                <td style="text-align: right; padding: 10px;"><b>฿{total_thb:,.2f}</b></td>
+            <tr style="background: #e0e0e0; font-weight: bold; font-size: 14px;">
+                <td style="text-align: right; padding: 8px;">TOTAL:</td>
+                <td style="text-align: right; padding: 8px;">${total_usd:,.2f}</td>
+                <td style="text-align: right; padding: 8px;">฿{total_thb:,.2f}</td>
             </tr>
         </table>
-        <hr>
-        <p style="text-align: center; color: #666;">Exchange Rate: 1 USD = {exchange_rate} THB</p>
+        
+        <hr style="border: 1px solid #333; margin-top: 15px;">
+        
+        <p style="text-align: center; font-size: 11px; margin: 5px 0;">
+            <b>Exchange Rate:</b> 1 USD = {exchange_rate} THB
+        </p>
+        <p style="text-align: center; font-size: 10px; color: #666; margin: 5px 0;">
+            This invoice is subject to GAC Thailand Standard Terms and Conditions
+        </p>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    
+    st.markdown(html, unsafe_allow_html=True)
     
     st.markdown("---")
     
