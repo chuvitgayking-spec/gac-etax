@@ -95,11 +95,9 @@ def load_invoices_from_db():
             invoice_date = ''
             customer_name = ''
             total_amount = 0
-            items = []  # Default empty list
+            items = []
             
-            # Check file type
-            if filename.endswith(('.xlsx', '.xls', '.pdf')):
-                # Read Excel file
+            if filename.endswith(('.xlsx', '.xls')):
                 try:
                     import openpyxl
                     wb = openpyxl.load_workbook(filepath, data_only=True)
@@ -114,26 +112,47 @@ def load_invoices_from_db():
                         if location_cell.value and 'Bangkok' in str(location_cell.value):
                             invoice_no = 'BKK' + invoice_no
                     
-                    # Look for Job Number in column 28
+                    # Get Job Number from column 28
                     job_cell = sheet.cell(row=5, column=28)
                     if job_cell.value:
                         job_str = str(job_cell.value).strip()
                         if ':' in job_str:
                             job_number = job_str.split(':')[-1].strip().replace(',', '')
-                        elif job_str.isdigit() and len(job_number) >= 5:
+                        elif job_str.isdigit() and len(job_str) >= 5:
                             job_number = job_str
-                                    parts = cell_str.split(':')
-                                    if len(parts) > 1:
-                                        customer_name = parts[-1].strip()
-                                if 'Invoice Date' in cell_str and ':' in cell_str:
-                                    parts = cell_str.split(':')
-                                    if len(parts) > 1:
-                                        invoice_date = parts[-1].strip()
-                                        
+                    
+                    # Get total from column 17
+                    total_cell = sheet.cell(row=2, column=17)
+                    if total_cell.value:
+                        try:
+                            total_amount = float(str(total_cell.value).replace(',', ''))
+                        except:
+                            total_amount = 0
+                    
+                    # Extract items
+                    for row_idx in range(10, 100):
+                        desc_cell = sheet.cell(row=row_idx, column=1)
+                        if desc_cell.value and isinstance(desc_cell.value, str) and len(desc_cell.value) > 2:
+                            if not desc_cell.value.startswith('Textbox') and not desc_cell.value.startswith('Txt'):
+                                amt_cell = sheet.cell(row=row_idx, column=5)
+                                try:
+                                    amount = float(str(amt_cell.value).replace(',', '')) if amt_cell.value else 0
+                                    if amount > 0:
+                                        items.append({
+                                            'item_no': len(items) + 1,
+                                            'description': desc_cell.value[:50],
+                                            'amount': amount,
+                                            'category': 'VAT_7',
+                                            'vat_rate': 7,
+                                            'vat_amount': amount * 0.07
+                                        })
+                                except:
+                                    pass
+                                    
                 except Exception as e:
                     print(f"Excel error: {e}")
+                    
             elif filename.endswith('.pdf'):
-                # PDF extraction - basic info only
                 try:
                     import PyPDF2
                     with open(filepath, 'rb') as pdf_file:
@@ -142,7 +161,6 @@ def load_invoices_from_db():
                         for page in pdf_reader.pages:
                             text += page.extract_text()
                     
-                    # Extract info from PDF text
                     inv_match = re.search(r'Invoice No[.:]\s*([A-Z0-9-]+)', text)
                     if inv_match:
                         invoice_no = inv_match.group(1)
@@ -158,65 +176,34 @@ def load_invoices_from_db():
                 except Exception as e:
                     print(f"PDF error: {e}")
             else:
-                # Read CSV file
-                with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
-                    content = file.read()
-                
-                import re
-                inv_match = re.search(r'Invoice No[.,]: ([A-Z0-9-]+)', content)
-                invoice_no = inv_match.group(1) if inv_match else filename.split('_', 1)[-1].replace('.csv', '').replace('.xlsx', '').replace('.xls', '')
-                
-                job_match = re.search(r': (\d{5,6}) ,.*?Job', content)
-                job_number = job_match.group(1) if job_match else ''
-                
-                awb_match = re.search(r'([A-Z]{3}-\d{6}-[A-Z])', content)
-                awb = awb_match.group(1) if awb_match else ''
-                
-                date_match = re.search(r'Invoice Date[.,]: (\d+ \w+ \d{4})', content)
-                invoice_date = date_match.group(1) if date_match else ''
-                
-                cust_match = re.search(r'Attention[,:] ([^\n,]+)', content)
-                customer_name = cust_match.group(1).strip() if cust_match else 'Unknown'
-                
-                # Get total from column 17 (Due Amount THB)
-                total_cell = sheet.cell(row=2, column=17)
-                if total_cell.value:
-                    try:
-                        total_amount = float(str(total_cell.value).replace(',', ''))
-                    except:
-                        total_amount = 0
-                
-                # Extract items - look for rows with item data
-                items = []
-                for row_idx in range(10, 100):
-                    # Look for item description in various columns
-                    desc_cell = sheet.cell(row=row_idx, column=1)
-                    if desc_cell.value and isinstance(desc_cell.value, str) and len(desc_cell.value) > 2:
-                        # Check if this looks like an item row
-                        if not desc_cell.value.startswith('Textbox') and not desc_cell.value.startswith('Txt'):
-                            # Try to get amount from other columns
-                            amt_cell = sheet.cell(row=row_idx, column=5)
-                            try:
-                                amount = float(str(amt_cell.value).replace(',', '')) if amt_cell.value else 0
-                                if amount > 0:
-                                    items.append({
-                                        'item_no': len(items) + 1,
-                                        'description': desc_cell.value[:50],
-                                        'amount': amount,
-                                        'category': 'VAT_7',
-                                        'vat_rate': 7,
-                                        'vat_amount': amount * 0.07
-                                    })
-                            except:
-                                pass
-                
-                # Store items in invoice
+                # CSV
+                try:
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
+                        content = file.read()
+                    
+                    import re
+                    inv_match = re.search(r'Invoice No[.,]: ([A-Z0-9-]+)', content)
+                    invoice_no = inv_match.group(1) if inv_match else filename.split('_', 1)[-1].replace('.csv', '')
+                    
+                    job_match = re.search(r': (\d{5,6}) ,.*?Job', content)
+                    job_number = job_match.group(1) if job_match else ''
+                    
+                    awb_match = re.search(r'([A-Z]{3}-\d{6}-[A-Z])', content)
+                    awb = awb_match.group(1) if awb_match else ''
+                    
+                    date_match = re.search(r'Invoice Date[.,]: (\d+ \w+ \d{4})', content)
+                    invoice_date = date_match.group(1) if date_match else ''
+                    
+                    total_match = re.search(r'Total Amount of Invoice.*?:.*?\$?([\d,]+\.?\d*)', content)
+                    total_amount = float(total_match.group(1).replace(',', '')) if total_match else 0
+                except Exception as e:
+                    print(f"CSV error: {e}")
             
             invoices.append({
                 'id': i,
                 'filename': filename,
                 'filepath': filepath,
-                'invoice_no': invoice_no or filename.split('_', 1)[-1].replace('.csv', '').replace('.xlsx', '').replace('.xls', ''),
+                'invoice_no': invoice_no or filename.split('_', 1)[-1].replace('.csv', '').replace('.xlsx', '').replace('.xls', '').replace('.pdf', ''),
                 'invoice_date': invoice_date,
                 'customer_name': customer_name,
                 'job_number': job_number,
@@ -233,6 +220,7 @@ def load_invoices_from_db():
             continue
     
     return invoices
+
 
 
 def get_db_connection():
