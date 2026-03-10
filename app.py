@@ -1065,12 +1065,17 @@ def show_invoice_list():
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
         col1, col2 = st.columns([3, 1])
         with col1:
-            # Check if there's a refreshed rate
-            default_rate = inv.get('exchange_rate', 30.909)
-            if f"refreshed_rate_{selected_idx}" in st.session_state:
-                default_rate = st.session_state[f"refreshed_rate_{selected_idx}"]
+            # Check session state for rate first
+            rate_key = f"edit_rate_{selected_idx}"
+            if rate_key not in st.session_state:
+                st.session_state[rate_key] = inv.get('exchange_rate', 30.909)
             
-            new_rate = st.number_input("Exchange Rate (USD/THB)", value=float(default_rate), min_value=1.0, step=0.001, key=f"edit_rate_{selected_idx}")
+            new_rate = st.number_input("Exchange Rate (USD/THB)", 
+                                       value=float(st.session_state[rate_key]), 
+                                       min_value=1.0, step=0.001, 
+                                       key=rate_key)
+            # Update session state with current value
+            st.session_state[rate_key] = new_rate
         with col2:
             st.write("")
             st.write("")
@@ -1080,14 +1085,14 @@ def show_invoice_list():
                     invoice_date_str = str(datetime.now().date())
                 
                 new_rate_api = get_exchange_rate_from_api(invoice_date_str)
+                rate_key = f"edit_rate_{selected_idx}"
                 if new_rate_api:
-                    st.session_state[f"refreshed_rate_{selected_idx}"] = new_rate_api
+                    st.session_state[rate_key] = new_rate_api
                     st.success(f"✅ Rate ใหม่: {new_rate_api:.4f}")
                     st.rerun()
                 else:
-                    # Use a default rate if API fails
-                    st.session_state[f"refreshed_rate_{selected_idx}"] = 35.0
-                    st.warning("⚠️ ไม่ได้ Rate จาก API ใช้ค่าเริ่มต้น 35.0")
+                    st.session_state[rate_key] = 35.0
+                    st.warning("⚠️ ไม่ได้ Rate จาก API ใช้ค่า 35.0")
                     st.rerun()
         
         # Update button
