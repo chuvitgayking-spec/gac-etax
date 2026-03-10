@@ -806,14 +806,17 @@ def show_invoice_list():
     """Show list of all uploaded invoices for editing"""
     st.markdown('<p class="main-header">📋 Invoice List</p>', unsafe_allow_html=True)
     
-    if 'uploaded_invoices' not in st.session_state or not st.session_state['uploaded_invoices']:
+    # Load from files
+    invoices = load_invoices_from_db()
+    
+    if not invoices:
         st.warning("⚠️ ยังไม่มี Invoice")
         if st.button("📤 ไปหน้าอัปโหลด"):
             st.session_state['menu'] = '📤 Upload'
             st.rerun()
         return
     
-    invoices = st.session_state['uploaded_invoices']
+    st.markdown(f"### 📋 รายการ Invoice ({len(invoices)} ใบ)")
     
     st.markdown(f"### 📋 รายการ Invoice ({len(invoices)} ใบ)")
     
