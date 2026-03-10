@@ -10,15 +10,15 @@ import json
 
 DB_PATH = '/Users/chuvit/.openclaw/workspace/gac_etax/data/invoices.db'
 
-def save_invoice_to_db(invoice_data):
+def save_invoice_to_db(invoice_data, status='pending'):
     """Save invoice to database for persistence"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
     items_json = json.dumps(invoice_data.get('items', []))
     
-    c.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+    c.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (invoice_data.get('filename', ''),
          invoice_data.get('invoice_no', ''),
          invoice_data.get('invoice_date', ''),
@@ -29,7 +29,8 @@ def save_invoice_to_db(invoice_data):
          invoice_data.get('exchange_rate', 30.909),
          invoice_data.get('total_amount', 0),
          invoice_data.get('total_thb', 0),
-         items_json))
+         items_json,
+         status))
     
     conn.commit()
     invoice_id = c.lastrowid
@@ -858,15 +859,18 @@ def show_invoice_list():
     # Show table with all invoices
     data = []
     for i, inv in enumerate(invoices):
+        status = inv.get('status', 'pending')
+        status_display = "✅ ออกแล้ว" if status == "issued" else "⏳ รอ"
+        
         data.append({
             'No.': i + 1,
-            'Filename': inv.get('filename', '-'),
             'Invoice No': inv.get('invoice_no', '-'),
             'Job No': inv.get('job_number', '-'),
             'AWB': inv.get('awb', '-'),
             'Customer': inv.get('customer_name', '-')[:25],
             'Date': inv.get('invoice_date', '-'),
             'Total (USD)': f"${float(inv.get('total_amount', 0)):,.2f}",
+            'Status': status_display,
         })
     
     df = pd.DataFrame(data)
