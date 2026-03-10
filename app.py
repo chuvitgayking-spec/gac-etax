@@ -1001,16 +1001,16 @@ def show_invoice_list():
     st.dataframe(df, use_container_width=True)
     
     # Edit section
-    st.markdown("### ✏️ แก้ไข Invoice")
+    st.markdown("### 🧾 ออกใบเสร็จ")
     
     # Select invoice to edit
     options = [f"{i+1}. {inv.get('filename', inv.get('invoice_no', f'Invoice {i+1}'))}" for i, inv in enumerate(invoices)]
-    selected_idx = st.selectbox("เลือก Invoice ที่จะแก้ไข:", range(len(options)), format_func=lambda x: options[x])
+    selected_idx = st.selectbox("เลือก Invoice ที่จะออกใบเสร็จ:", range(len(options)), format_func=lambda x: options[x])
     
     # Show selected invoice details
     inv = invoices[selected_idx]
     
-    with st.expander(f"✏️ แก้ไข: {inv.get('filename', inv.get('invoice_no', 'Invoice'))}", expanded=True):
+    with st.expander(f"✏️ ออกใบเสร็จ: {inv.get('filename', inv.get('invoice_no', 'Invoice'))}", expanded=True):
         # Edit form
         col1, col2 = st.columns(2)
         
