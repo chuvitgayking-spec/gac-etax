@@ -11,6 +11,13 @@ import json
 import re
 import os
 
+# Company Info
+COMPANY_NAME = "GAC THAILAND CO., LTD."
+COMPANY_TAX_ID = "0105548024532"
+COMPANY_ADDRESS = "9/2 Sathorn 39, South Sathorn Road, Yannawa, Sathorn, Bangkok 10120"
+COMPANY_TEL = "+66 2 676 1900"
+COMPANY_FAX = "+66 2 676 1990"
+
 DB_PATH = '/Users/chuvit/.openclaw/workspace/gac_etax/data/invoices.db'
 
 def save_invoice_to_db(invoice_data, status='pending'):
