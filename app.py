@@ -1042,13 +1042,12 @@ def show_invoice_list():
         status_display = "✅ ออกแล้ว" if status == "issued" else "⏳ รอ"
         
         data.append({
-            'No.': i + 1,
             'Invoice No': inv.get('invoice_no', '-'),
             'Job No': inv.get('job_number', '-'),
-            'AWB': inv.get('awb', '-'),
             'Customer': inv.get('customer_name', '-')[:25],
             'Date': inv.get('invoice_date', '-'),
             'Total (USD)': f"${float(inv.get('total_amount', 0)):,.2f}",
+            'Currency': 'USD',
             'Status': status_display,
         })
     
