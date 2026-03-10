@@ -1014,18 +1014,20 @@ def show_invoice_list():
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
         col1, col2 = st.columns([3, 1])
         with col1:
-            new_rate = st.number_input("Exchange Rate (USD/THB)", value=float(inv.get('exchange_rate', 30.909)), min_value=1.0, step=0.001, key=f"edit_rate_{selected_idx}")
+            # Check if there's a refreshed rate
+            default_rate = inv.get('exchange_rate', 30.909)
+            if f"refreshed_rate_{selected_idx}" in st.session_state:
+                default_rate = st.session_state[f"refreshed_rate_{selected_idx}"]
+            
+            new_rate = st.number_input("Exchange Rate (USD/THB)", value=float(default_rate), min_value=1.0, step=0.001, key=f"edit_rate_{selected_idx}")
         with col2:
             st.write("")
             st.write("")
             if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):
                 new_rate_api = get_exchange_rate_from_api(str(inv.get('invoice_date', '')))
                 if new_rate_api:
-                    # Update the number input value by setting session state
-                    st.session_state[f"edit_rate_{selected_idx}"] = new_rate_api
-                    new_rate = new_rate_api
+                    st.session_state[f"refreshed_rate_{selected_idx}"] = new_rate_api
                     st.success(f"✅ Rate ใหม่: {new_rate_api:.4f}")
-                    st.rerun()
                 else:
                     st.error("❌ ไม่ได้")
         
