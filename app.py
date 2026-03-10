@@ -122,7 +122,6 @@ def load_invoices_from_db():
                             job_number = job_str.split(':')[-1].strip().replace(',', '')
                         elif job_str.isdigit() and len(job_number) >= 5:
                             job_number = job_str
-                                if 'Attention' in cell_str and ':' in cell_str:
                                     parts = cell_str.split(':')
                                     if len(parts) > 1:
                                         customer_name = parts[-1].strip()
