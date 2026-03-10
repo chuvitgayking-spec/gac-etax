@@ -12,12 +12,14 @@ import json
 import re
 import os
 
-# Company Info
-COMPANY_NAME = "GAC THAILAND CO., LTD."
+# Company Info - GAC Thailand
+COMPANY_NAME = "GAC (THAILAND) CO., LTD."
 COMPANY_TAX_ID = "0105548024532"
-COMPANY_ADDRESS = "9/2 Sathorn 39, South Sathorn Road, Yannawa, Sathorn, Bangkok 10120"
+COMPANY_ADDRESS = "9/2 Sathorn 39, South Sathorn Road, Yannawa, Sathorn, Bangkok 10120, Thailand"
 COMPANY_TEL = "+66 2 676 1900"
 COMPANY_FAX = "+66 2 676 1990"
+COMPANY_EMAIL = "thailand@gac.com"
+COMPANY_WEB = "www.gac.com/thailand"
 
 import os
 # Database path - works on both local and cloud
@@ -685,9 +687,30 @@ st.markdown("""
     .stButton>button { width: 100%; }
 </style>
 """, unsafe_allow_html=True)
+    
+st.markdown("""<style>
+    .main-header { 
+        font-size: 28px; 
+        font-weight: bold; 
+        color: #ffffff;
+        background: linear-gradient(135deg, #0066b2 0%, #00a3e0 100%);
+        padding: 20px;
+        text-align: center;
+        border-radius: 15px;
+        margin-bottom: 20px;
+    }
+    .stButton>button { 
+        border-radius: 10px;
+    }
+</style>""", unsafe_allow_html=True)
 
 def main():
-    st.sidebar.title("🏢 GAC e-Tax System")
+    st.sidebar.markdown("""
+    <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #0066b2 0%, #00a3e0 100%); border-radius: 15px; margin-bottom: 20px;">
+        <h2 style="color: white; margin: 0;">🏢 GACTH</h2>
+        <p style="color: white; margin: 5px 0;">E-Tax Receipt</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # BOT API Status
     creds = get_bot_credentials()
