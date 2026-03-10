@@ -112,19 +112,14 @@ def load_invoices_from_db():
                         if location_cell.value and 'Bangkok' in str(location_cell.value):
                             invoice_no = 'BKK' + invoice_no
                     
-                    # Get Job Number - use invoice number (10 digits)
-                    inv_cell = sheet.cell(row=2, column=6)
-                    if inv_cell.value and 'Invoice No' in str(inv_cell.value):
-                        inv_no = str(inv_cell.value).split(':')[-1].strip()
-                        if inv_no.isdigit() and len(inv_no) == 10:
-                            job_number = inv_no  # This is the 10-digit job number
-                    
-                    # Also get the short job number from column 28 if needed
+                    # Get Job Number from column 28 (the 5-digit number like 74452)
                     job_cell = sheet.cell(row=5, column=28)
-                    if job_cell.value and not job_number:
+                    if job_cell.value:
                         job_str = str(job_cell.value).strip()
                         if ':' in job_str:
                             job_number = job_str.split(':')[-1].strip().replace(',', '')
+                        elif job_str.replace(',', '').isdigit():
+                            job_number = job_str.replace(',', '')
                     
                     # Get total from column 17
                     total_cell = sheet.cell(row=2, column=17)
