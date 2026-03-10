@@ -1021,21 +1021,29 @@ def recalculate_invoice(invoice):
     invoice['total_thb'] = (subtotal + vat_total) * rate
 
 def show_settings():
-    st.markdown('<p class="main-header">⚙️ Tax Mapping Settings</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">⚙️ Tax Settings</p>', unsafe_allow_html=True)
     
     mapping = DEFAULT_MAPPING.copy()
     
-    st.markdown("#### กลุ่ม A - NON VAT (0%)")
-    non_vat = st.text_area("Keywords", value=', '.join(mapping['NON_VAT']), height=80)
+    st.info("💡 รายการที่ไม่ตรงกับเงื่อนไขใดๆ จะคิด VAT 7% อัตโนมัติ")
     
-    st.markdown("#### กลุ่ม B - VAT 7%")
-    vat_7 = st.text_area("Keywords", value=', '.join(mapping['VAT_7']), height=80)
+    col1, col2 = st.columns(2)
     
-    st.markdown("#### กลุ่ม C - Partial VAT")
-    partial = st.text_area("Keywords (ต้องกรอก VAT เอง)", value=', '.join(mapping['PARTIAL_VAT']), height=60)
+    with col1:
+        st.markdown("#### 📄 กลุ่ม A - ไม่คิด VAT (0%)")
+        non_vat = st.text_area("Keywords (คั่นด้วย comma)", value=', '.join(mapping['NON_VAT']), height=120, key="non_vat")
     
-    if st.button("💾 Save Settings"):
-        st.success("✅ Settings saved to session (Note: For cloud, save to database)")
+    with col2:
+        st.markdown("#### 📋 กลุ่ม C - หัก VAT บางส่วน")
+        partial = st.text_area("Keywords (คั่นด้วย comma)", value=', '.join(mapping['PARTIAL_VAT']), height=120, key="partial")
+    
+    if st.button("💾 Save Settings", type="primary"):
+        # Update mapping
+        mapping['NON_VAT'] = [k.strip() for k in non_vat.split(',') if k.strip()]
+        mapping['PARTIAL_VAT'] = [k.strip() for k in partial.split(',') if k.strip()]
+        
+        st.session_state['tax_mapping'] = mapping
+        st.success("✅ บันทึกสำเร็จ!")
 
 def show_preview():
     st.markdown('<p class="main-header">👁️ Preview & Issue Invoice</p>', unsafe_allow_html=True)
