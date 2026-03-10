@@ -89,35 +89,78 @@ def load_invoices_from_db():
             filepath = f['filepath']
             filename = f['filename']
             
-            # Read file content
-            with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
-                content = file.read()
+            invoice_no = ''
+            job_number = ''
+            awb = ''
+            invoice_date = ''
+            customer_name = ''
+            total_amount = 0
             
-            # Extract basic info
-            import re
-            inv_match = re.search(r'Invoice No[.,]: ([\w-]+)', content)
-            invoice_no = inv_match.group(1) if inv_match else filename.split('_', 1)[-1].replace('.csv', '').replace('.xlsx', '').replace('.xls', '')
-            
-            job_match = re.search(r': (\d{5,6}) ,.*?Job', content)
-            job_number = job_match.group(1) if job_match else ''
-            
-            awb_match = re.search(r'([A-Z]{3}-\d{6}-[A-Z])', content)
-            awb = awb_match.group(1) if awb_match else ''
-            
-            date_match = re.search(r'Invoice Date[.,]: (\d+ \w+ \d{4})', content)
-            invoice_date = date_match.group(1) if date_match else ''
-            
-            cust_match = re.search(r'Attention[,]: ([^\n,]+)', content)
-            customer_name = cust_match.group(1).strip() if cust_match else 'Unknown'
-            
-            total_match = re.search(r'Total Amount of Invoice.*?:.*?\$?([\d,]+\.?\d*)', content)
-            total_amount = float(total_match.group(1).replace(',', '')) if total_match else 0
+            # Check file type
+            if filename.endswith(('.xlsx', '.xls')):
+                # Read Excel file
+                try:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(filepath, data_only=True)
+                    sheet = wb.active
+                    
+                    # Find Invoice No in row 2, col 6
+                    cell = sheet.cell(row=2, column=6)
+                    if cell.value and 'Invoice No' in str(cell.value):
+                        invoice_no = str(cell.value).split(':')[-1].strip()
+                    
+                    # Look for more data in other cells
+                    for row_idx in range(1, 50):
+                        for col_idx in range(1, 30):
+                            cell_val = sheet.cell(row=row_idx, column=col_idx).value
+                            if cell_val:
+                                cell_str = str(cell_val)
+                                if 'Job' in cell_str and ':' in cell_str:
+                                    parts = cell_str.split(':')
+                                    if len(parts) > 1:
+                                        job_candidate = parts[-1].strip().replace(',', '')
+                                        if job_candidate.isdigit() and len(job_candidate) >= 5:
+                                            job_number = job_candidate
+                                if 'Attention' in cell_str and ':' in cell_str:
+                                    parts = cell_str.split(':')
+                                    if len(parts) > 1:
+                                        customer_name = parts[-1].strip()
+                                if 'Invoice Date' in cell_str and ':' in cell_str:
+                                    parts = cell_str.split(':')
+                                    if len(parts) > 1:
+                                        invoice_date = parts[-1].strip()
+                                        
+                except Exception as e:
+                    print(f"Excel error: {e}")
+            else:
+                # Read CSV file
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
+                    content = file.read()
+                
+                import re
+                inv_match = re.search(r'Invoice No[.,]: ([A-Z0-9-]+)', content)
+                invoice_no = inv_match.group(1) if inv_match else filename.split('_', 1)[-1].replace('.csv', '').replace('.xlsx', '').replace('.xls', '')
+                
+                job_match = re.search(r': (\d{5,6}) ,.*?Job', content)
+                job_number = job_match.group(1) if job_match else ''
+                
+                awb_match = re.search(r'([A-Z]{3}-\d{6}-[A-Z])', content)
+                awb = awb_match.group(1) if awb_match else ''
+                
+                date_match = re.search(r'Invoice Date[.,]: (\d+ \w+ \d{4})', content)
+                invoice_date = date_match.group(1) if date_match else ''
+                
+                cust_match = re.search(r'Attention[,:] ([^\n,]+)', content)
+                customer_name = cust_match.group(1).strip() if cust_match else 'Unknown'
+                
+                total_match = re.search(r'Total Amount of Invoice.*?:.*?\$?([\d,]+\.?\d*)', content)
+                total_amount = float(total_match.group(1).replace(',', '')) if total_match else 0
             
             invoices.append({
                 'id': i,
                 'filename': filename,
                 'filepath': filepath,
-                'invoice_no': invoice_no,
+                'invoice_no': invoice_no or filename.split('_', 1)[-1].replace('.csv', '').replace('.xlsx', '').replace('.xls', ''),
                 'invoice_date': invoice_date,
                 'customer_name': customer_name,
                 'job_number': job_number,
@@ -134,6 +177,7 @@ def load_invoices_from_db():
             continue
     
     return invoices
+
 
 def get_db_connection():
     """Get database connection"""
