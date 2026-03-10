@@ -1078,10 +1078,12 @@ def show_invoice_list():
                 if new_rate_api:
                     st.session_state[f"refreshed_rate_{selected_idx}"] = new_rate_api
                     st.success(f"✅ Rate ใหม่: {new_rate_api:.4f}")
+                    st.rerun()
                 else:
                     # Use a default rate if API fails
                     st.session_state[f"refreshed_rate_{selected_idx}"] = 35.0
                     st.warning("⚠️ ไม่ได้ Rate จาก API ใช้ค่าเริ่มต้น 35.0")
+                    st.rerun()
         
         # Update button
         if st.button("💾 บันทึกการแก้ไข", key=f"save_{selected_idx}"):
