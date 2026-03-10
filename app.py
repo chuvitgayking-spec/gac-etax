@@ -606,9 +606,21 @@ def process_single_file(uploaded_file, return_data=False):
         df = pd.read_excel(BytesIO(content))
         content = df.to_csv(index=False).encode('utf-8')
     
+    # Save to temp file for ref extraction
+    import tempfile
+    import os
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, encoding='utf-8') as tmp:
+        tmp.write(content.decode('utf-8'))
+        tmp_path = tmp.name
+    
+    # Extract reference numbers
+    refs = extract_invoice_refs(tmp_path)
+    os.unlink(tmp_path)
+    
     # Store in session state
     st.session_state['raw_content'] = content
     st.session_state['filename'] = uploaded_file.name
+    st.session_state['refs'] = refs
     
     # Process items
     items = process_csv_in_memory(content, uploaded_file.name)
@@ -775,10 +787,11 @@ def show_invoice_list():
             'No.': i + 1,
             'Filename': inv.get('filename', '-'),
             'Invoice No': inv.get('invoice_no', '-'),
-            'Customer': inv.get('customer_name', '-')[:30],
+            'Job No': inv.get('job_number', '-'),
+            'AWB': inv.get('awb', '-'),
+            'Customer': inv.get('customer_name', '-')[:25],
             'Date': inv.get('invoice_date', '-'),
             'Total (USD)': f"${float(inv.get('total_amount', 0)):,.2f}",
-            'Total (THB)': f"฿{float(inv.get('total_thb', 0)):,.2f}",
         })
     
     df = pd.DataFrame(data)
