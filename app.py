@@ -1082,7 +1082,7 @@ def show_invoice_list():
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
         col1, col2 = st.columns([3, 1])
         with col1:
-            new_rate = st.number_input("Exchange Rate (USD/THB)", value=30.909, min_value=1.0, step=0.001, key=f"edit_rate_{selected_idx}")
+            new_rate = st.number_input("Exchange Rate (USD/THB)", value=0.0, min_value=0.0, step=0.001, key=f"edit_rate_{selected_idx}")
         with col2:
             st.write("")
             st.write("")
