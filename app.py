@@ -108,6 +108,10 @@ def load_invoices_from_db():
                     cell = sheet.cell(row=2, column=6)
                     if cell.value and 'Invoice No' in str(cell.value):
                         invoice_no = str(cell.value).split(':')[-1].strip()
+                        # Check if Bangkok - add BKK prefix
+                        location_cell = sheet.cell(row=2, column=10)
+                        if location_cell.value and 'Bangkok' in str(location_cell.value):
+                            invoice_no = 'BKK' + invoice_no
                     
                     # Look for more data in other cells
                     for row_idx in range(1, 50):
