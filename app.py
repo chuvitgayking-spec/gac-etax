@@ -164,6 +164,32 @@ def load_invoices_from_db():
                         total_amount = float(str(total_cell.value).replace(',', ''))
                     except:
                         total_amount = 0
+                
+                # Extract items - look for rows with item data
+                items = []
+                for row_idx in range(10, 100):
+                    # Look for item description in various columns
+                    desc_cell = sheet.cell(row=row_idx, column=1)
+                    if desc_cell.value and isinstance(desc_cell.value, str) and len(desc_cell.value) > 2:
+                        # Check if this looks like an item row
+                        if not desc_cell.value.startswith('Textbox') and not desc_cell.value.startswith('Txt'):
+                            # Try to get amount from other columns
+                            amt_cell = sheet.cell(row=row_idx, column=5)
+                            try:
+                                amount = float(str(amt_cell.value).replace(',', '')) if amt_cell.value else 0
+                                if amount > 0:
+                                    items.append({
+                                        'item_no': len(items) + 1,
+                                        'description': desc_cell.value[:50],
+                                        'amount': amount,
+                                        'category': 'VAT_7',
+                                        'vat_rate': 7,
+                                        'vat_amount': amount * 0.07
+                                    })
+                            except:
+                                pass
+                
+                # Store items in invoice
             
             invoices.append({
                 'id': i,
@@ -177,7 +203,7 @@ def load_invoices_from_db():
                 'exchange_rate': 30.909,
                 'total_amount': total_amount,
                 'total_thb': total_amount * 30.909,
-                'items': [],
+                'items': items if items else [],
                 'status': 'pending',
                 'created_at': filename[:8]
             })
@@ -984,8 +1010,11 @@ def show_invoice_list():
             if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):
                 new_rate_api = get_exchange_rate_from_api(str(inv.get('invoice_date', '')))
                 if new_rate_api:
+                    # Update the number input value by setting session state
+                    st.session_state[f"edit_rate_{selected_idx}"] = new_rate_api
                     new_rate = new_rate_api
                     st.success(f"✅ Rate ใหม่: {new_rate_api:.4f}")
+                    st.rerun()
                 else:
                     st.error("❌ ไม่ได้")
         
