@@ -739,30 +739,23 @@ def show_upload():
 
 
 def show_uploaded_list_sidebar():
-    """Show list of uploaded invoices in sidebar"""
-    if 'uploaded_invoices' in st.session_state and st.session_state['uploaded_invoices']:
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### 📋 Invoice ที่อัปโหลดแล้ว")
+    """Show list of uploaded files in sidebar"""
+    files = list_uploaded_files()
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📁 ไฟล์ที่อัปโหลด")
+    
+    if files:
+        st.sidebar.caption(f"📄 ทั้งหมด: {len(files)} ไฟล์")
         
-        for i, inv in enumerate(st.session_state['uploaded_invoices']):
-            filename = inv.get('filename', inv.get('invoice_no', f'Invoice {i+1}'))
-            customer = inv.get('customer_name', '')[:25]
-            total = f"${float(inv['total_amount']):,.2f}"
-            
-            st.sidebar.code(f"{i+1}. {filename}")
-            st.sidebar.caption(f"   {customer}")
-            st.sidebar.caption(f"   Total: {total}")
+        for f in files[:10]:
+            st.sidebar.code(f"📄 {f['filename'][:30]}")
         
-        # Clear all button
-        if st.sidebar.button("🗑️ ลบทั้งหมด", key="clear_all"):
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            c.execute('DELETE FROM invoices')
-            conn.commit()
-            conn.close()
-            st.session_state['uploaded_invoices'] = []
-            st.session_state['batch_invoices'] = []
-            st.rerun()
+        if len(files) > 10:
+            st.sidebar.caption(f"... และอีก {len(files) - 10} ไฟล์")
+    else:
+        st.sidebar.caption("ยังไม่มีไฟล์")
+
 
 def process_single_file(uploaded_file, return_data=False):
     """Process a single file"""
