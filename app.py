@@ -1,3 +1,6 @@
+# Invoice Database
+INVOICE_DB = "/tmp/invoice_records.db"
+
 import streamlit as st
 import pandas as pd
 #!/usr/bin/env python3
