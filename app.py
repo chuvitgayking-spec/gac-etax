@@ -1055,7 +1055,7 @@ def show_invoice_list():
     st.markdown("### 🧾 ออกใบเสร็จ")
     
     # Select invoice to edit
-    options = [f"{i+1}. {inv.get('filename', inv.get('invoice_no', f'Invoice {i+1}'))}" for i, inv in enumerate(invoices)]
+    options = [f"{inv.get('invoice_no', 'N/A')} | {inv.get('customer_name', 'Unknown')[:25]}" for i, inv in enumerate(invoices)]
     selected_idx = st.selectbox("เลือก Invoice ที่จะออกใบเสร็จ:", range(len(options)), format_func=lambda x: options[x])
     
     # Show selected invoice details
