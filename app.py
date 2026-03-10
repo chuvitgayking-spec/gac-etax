@@ -677,7 +677,7 @@ def process_single_file(uploaded_file, return_data=False):
     # Try to get rate from API, fallback to manual
     api_rate = get_exchange_rate_from_api(str(invoice_date))
     
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([2, 1])
     with col1:
         st.caption(f"📅 วันที่: {invoice_date}")
         if api_rate:
@@ -685,7 +685,18 @@ def process_single_file(uploaded_file, return_data=False):
             exchange_rate = api_rate
         else:
             st.warning("📌 ไม่สามารถดึง Rate อัตโนมัติได้")
-            exchange_rate = st.number_input("💱 ใส่อัตราแลกเปลี่ยน USD/THB", value=30.909, min_value=1.0, step=0.001, key=f"rate_{uploaded_file.name}")
+            exchange_rate = st.number_input("💱 USD/THB", value=30.909, min_value=1.0, step=0.001, key=f"rate_{uploaded_file.name}")
+    with col2:
+        st.write("")
+        st.write("")
+        if st.button("🔄 ดึง Rate ใหม่", key=f"refresh_rate_{uploaded_file.name}"):
+            new_rate = get_exchange_rate_from_api(str(invoice_date))
+            if new_rate:
+                st.success(f"✅ ได้ Rate ใหม่: {new_rate:.4f}")
+                st.session_state[f"rate_{uploaded_file.name}"] = new_rate
+                st.rerun()
+            else:
+                st.error("❌ ไม่สามารถดึง Rate ได้")
     st.session_state['exchange_rate'] = exchange_rate
     
     # Invoice info
@@ -817,7 +828,19 @@ def show_invoice_list():
             new_date = st.text_input("Date", value=inv.get('invoice_date', ''), key=f"edit_date_{selected_idx}")
         
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
-        new_rate = st.number_input("Exchange Rate (USD/THB)", value=float(inv.get('exchange_rate', 30.909)), min_value=1.0, step=0.001, key=f"edit_rate_{selected_idx}")
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            new_rate = st.number_input("Exchange Rate (USD/THB)", value=float(inv.get('exchange_rate', 30.909)), min_value=1.0, step=0.001, key=f"edit_rate_{selected_idx}")
+        with col2:
+            st.write("")
+            st.write("")
+            if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):
+                new_rate_api = get_exchange_rate_from_api(str(inv.get('invoice_date', '')))
+                if new_rate_api:
+                    new_rate = new_rate_api
+                    st.success(f"✅ Rate ใหม่: {new_rate_api:.4f}")
+                else:
+                    st.error("❌ ไม่ได้")
         
         # Update button
         if st.button("💾 บันทึกการแก้ไข", key=f"save_{selected_idx}"):
