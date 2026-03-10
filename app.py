@@ -1087,9 +1087,8 @@ def show_invoice_list():
             st.write("")
             st.write("")
             if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):
-                invoice_date_str = inv.get('invoice_date', '')
-                if not invoice_date_str:
-                    invoice_date_str = str(datetime.now().date())
+                # Use new selected date for rate
+                invoice_date_str = str(new_date) if new_date else str(datetime.now().date())
                 
                 new_rate_api = get_exchange_rate_from_api(invoice_date_str)
                 if new_rate_api:
