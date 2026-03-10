@@ -1017,7 +1017,16 @@ def show_invoice_list():
         with col1:
             new_inv_no = st.text_input("Invoice No", value=inv.get('invoice_no', ''), key=f"edit_inv_{selected_idx}")
         with col2:
-            new_date = st.text_input("Date", value=inv.get('invoice_date', ''), key=f"edit_date_{selected_idx}")
+            # Date picker
+            from datetime import datetime
+            current_date_str = inv.get('invoice_date', '')
+            try:
+                # Try to parse the date
+                current_date = datetime.strptime(current_date_str, "%d %b %Y").date() if current_date_str else datetime.now().date()
+            except:
+                current_date = datetime.now().date()
+            
+            new_date = st.date_input("วันที่ออกใบเสร็จ", value=current_date, key=f"edit_date_{selected_idx}")
         
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
         col1, col2 = st.columns([3, 1])
