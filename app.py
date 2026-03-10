@@ -314,7 +314,7 @@ def init_database():
     conn.commit()
     conn.close()
 
-def get_next_running_number(prefix='GAC', year=None):
+def get_next_running_no(prefix='GAC', year=None):
     """Get next running number"""
     if year is None:
         year = datetime.now().year
@@ -1406,7 +1406,7 @@ def show_pdf_preview(invoice_data, key_suffix=""):
         gen_xml = st.checkbox("📄 e-Tax XML", value=False, key=f"xml{key_suffix}")
     
     if st.button("🎫 Generate & Download", type="primary", key=f"gen{key_suffix}"):
-        running_no = get_next_running_number('GAC')
+        running_no = get_next_running_no('GAC')
         invoice_data['running_no'] = running_no
         invoice_data['file_source'] = invoice_data.get('filename', '')
         
@@ -1515,7 +1515,7 @@ def show_pdf_preview(invoice_data, key_suffix=""):
     
     if st.button("🎫 Generate & Download", type="primary"):
         # Get running number
-        running_no = get_next_running_number('GAC')
+        running_no = get_next_running_no('GAC')
         
         invoice_data = {
             'invoice_no': info.get('invoice_no', ''),
@@ -1622,7 +1622,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     
     if st.button("🎫 Generate & Download", type="primary", key=f"gen{key_suffix}"):
         # Get running number
-        running_no = get_next_running_number('GAC')
+        running_no = get_next_running_no('GAC')
         
         invoice_data['running_no'] = running_no
         invoice_data['file_source'] = invoice_data.get('filename', '')
