@@ -113,7 +113,7 @@ def load_invoices_from_db():
                             invoice_no = 'BKK' + invoice_no
                     
                     # Get Job Number from column 28 (the 5-digit number like 74452)
-                    job_cell = sheet.cell(row=5, column=28)
+                    job_cell = sheet.cell(row=6, column=28)
                     if job_cell.value:
                         job_str = str(job_cell.value).strip()
                         if ':' in job_str:
