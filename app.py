@@ -1151,6 +1151,21 @@ def show_invoice_list():
                         st.success("✅ บันทึกสำเร็จ!")
                         st.rerun()
     
+    # Get selected index
+    selected_idx = options.index(selected)
+    inv = invoices[selected_idx]
+    
+    # Show preview inline after selection
+    if selected_idx is not None:
+        st.markdown("---")
+        st.markdown("### 👁️ Preview")
+        try:
+            from pdf_generator import generate_receipt_pdf
+            pdf_buf = generate_receipt_pdf(invoices[selected_idx])
+            st.info(f"PDF Ready - {len(pdf_buf.getvalue())/1024:.1f} KB")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
     # Navigation buttons
     st.markdown("---")
     col1, col2 = st.columns(2)
