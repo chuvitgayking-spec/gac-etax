@@ -19,7 +19,9 @@ COMPANY_ADDRESS = "9/2 Sathorn 39, South Sathorn Road, Yannawa, Sathorn, Bangkok
 COMPANY_TEL = "+66 2 676 1900"
 COMPANY_FAX = "+66 2 676 1990"
 
-DB_PATH = '/Users/chuvit/.openclaw/workspace/gac_etax/data/invoices.db'
+import os
+# Database path - works on both local and cloud
+DB_PATH = os.environ.get('DB_PATH', '/tmp/invoices.db')
 UPLOAD_DIR = '/Users/chuvit/.openclaw/workspace/gac_etax/data/uploads'
 
 def list_uploaded_files():
@@ -225,7 +227,9 @@ def load_invoices_from_db():
 
 def get_db_connection():
     """Get database connection"""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
