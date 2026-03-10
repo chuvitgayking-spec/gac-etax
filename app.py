@@ -98,7 +98,7 @@ def load_invoices_from_db():
             items = []  # Default empty list
             
             # Check file type
-            if filename.endswith(('.xlsx', '.xls')):
+            if filename.endswith(('.xlsx', '.xls', '.pdf')):
                 # Read Excel file
                 try:
                     import openpyxl
@@ -137,6 +137,31 @@ def load_invoices_from_db():
                                         
                 except Exception as e:
                     print(f"Excel error: {e}")
+            elif filename.endswith('.pdf'):
+                # PDF extraction - basic info only
+                try:
+                    import PyPDF2
+                    with open(filepath, 'rb') as pdf_file:
+                        pdf_reader = PyPDF2.PdfReader(pdf_file)
+                        text = ''
+                        for page in pdf_reader.pages:
+                            text += page.extract_text()
+                    
+                    # Extract info from PDF text
+                    inv_match = re.search(r'Invoice No[.:]\s*([A-Z0-9-]+)', text)
+                    if inv_match:
+                        invoice_no = inv_match.group(1)
+                    
+                    job_match = re.search(r'Job[:\s]+(\d{5,6})', text)
+                    if job_match:
+                        job_number = job_match.group(1)
+                    
+                    total_match = re.search(r'Total[:\s]+\$?([\d,]+\.?\d*)', text)
+                    if total_match:
+                        total_amount = float(total_match.group(1).replace(',', ''))
+                        
+                except Exception as e:
+                    print(f"PDF error: {e}")
             else:
                 # Read CSV file
                 with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
@@ -693,7 +718,7 @@ def show_upload():
     st.markdown("### 📤 อัปโหลดไฟล์ CSV/Excel")
     uploaded_files = st.file_uploader(
         "เลือกไฟล์ (เลือกได้หลายไฟล์)", 
-        type=['csv', 'xlsx', 'xls'], 
+        type=['csv', 'xlsx', 'xls', 'pdf'], 
         accept_multiple_files=True,
         key="file_uploader"
     )
