@@ -605,11 +605,7 @@ def main():
 def show_upload():
     st.markdown('<p class="main-header">📤 Upload CSV Invoice</p>', unsafe_allow_html=True)
     
-    # Initialize temp upload list in session state
-    if 'temp_upload_list' not in st.session_state:
-        st.session_state['temp_upload_list'] = []
-    
-    # Show sidebar with database invoices
+    # Show sidebar with uploaded files
     show_uploaded_list_sidebar()
     
     # File uploader
@@ -622,8 +618,43 @@ def show_upload():
     )
     
     if uploaded_files:
-        st.markdown(f"### 📋 รายการไฟล์ที่อัปโหลด ({len(uploaded_files)} ไฟล์)")
+        # Save files directly
+        saved_count = 0
+        for uploaded_file in uploaded_files:
+            try:
+                save_uploaded_file(uploaded_file)
+                saved_count += 1
+            except Exception as e:
+                st.error(f"Error: {e}")
         
+        if saved_count > 0:
+            st.success(f"✅ อัปโหลด {saved_count} ไฟล์สำเร็จ!")
+            st.rerun()
+    
+    # Show summary and button to go to Invoice List
+    files = list_uploaded_files()
+    if files:
+        st.markdown("### 📋 ไฟล์ที่อัปโหลดแล้ว")
+        
+        for f in files:
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.markdown(f"📄 {f['filename']}")
+            with col2:
+                if st.button("🗑️", key=f"del_{f['filename']}"):
+                    delete_uploaded_file(f['filename'])
+                    st.rerun()
+        
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📋 ไปหน้า Invoice List", type="primary"):
+                st.session_state['menu'] = '📋 Invoice List'
+                st.rerun()
+        with col2:
+            if st.button("🔄 รีโหลดหน้า"):
+                st.rerun()
+
 
 
 
