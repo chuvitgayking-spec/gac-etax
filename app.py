@@ -1047,12 +1047,18 @@ def show_invoice_list():
             st.write("")
             st.write("")
             if st.button("🔄 ดึง Rate", key=f"refresh_edit_{selected_idx}"):
-                new_rate_api = get_exchange_rate_from_api(str(inv.get('invoice_date', '')))
+                invoice_date_str = inv.get('invoice_date', '')
+                if not invoice_date_str:
+                    invoice_date_str = str(datetime.now().date())
+                
+                new_rate_api = get_exchange_rate_from_api(invoice_date_str)
                 if new_rate_api:
                     st.session_state[f"refreshed_rate_{selected_idx}"] = new_rate_api
                     st.success(f"✅ Rate ใหม่: {new_rate_api:.4f}")
                 else:
-                    st.error("❌ ไม่ได้")
+                    # Use a default rate if API fails
+                    st.session_state[f"refreshed_rate_{selected_idx}"] = 35.0
+                    st.warning("⚠️ ไม่ได้ Rate จาก API ใช้ค่าเริ่มต้น 35.0")
         
         # Update button
         if st.button("💾 บันทึกการแก้ไข", key=f"save_{selected_idx}"):
