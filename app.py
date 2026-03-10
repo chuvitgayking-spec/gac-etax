@@ -22,16 +22,26 @@ COMPANY_FAX = "+66 2 676 1990"
 import os
 # Database path - works on both local and cloud
 DB_PATH = os.environ.get('DB_PATH', '/tmp/invoices.db')
-UPLOAD_DIR = '/Users/chuvit/.openclaw/workspace/gac_etax/data/uploads'
+UPLOAD_DIR = os.environ.get('UPLOAD_DIR', '/tmp/uploads')
 
 def list_uploaded_files():
     """List all uploaded files"""
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    upload_dir = UPLOAD_DIR
+    if upload_dir and not os.path.exists(upload_dir):
+        try:
+            os.makedirs(upload_dir, exist_ok=True)
+        except:
+            upload_dir = '/tmp/uploads'
+            os.makedirs(upload_dir, exist_ok=True)
+    
     files = []
-    for f in os.listdir(UPLOAD_DIR):
+    try:
+        for f in os.listdir(upload_dir):
         filepath = os.path.join(UPLOAD_DIR, f)
         if os.path.isfile(filepath):
             files.append({'filename': f, 'filepath': filepath})
+        except:
+        pass
     return sorted(files, key=lambda x: x['filename'], reverse=True)
 
 def save_uploaded_file(uploaded_file):
