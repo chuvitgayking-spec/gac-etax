@@ -569,14 +569,14 @@ def main():
 def show_upload():
     st.markdown('<p class="main-header">📤 Upload CSV Invoice</p>', unsafe_allow_html=True)
     
-    # Initialize session state for uploaded invoices if not exists
-    if 'uploaded_invoices' not in st.session_state:
-        st.session_state['uploaded_invoices'] = []
+    # Initialize temp upload list in session state
+    if 'temp_upload_list' not in st.session_state:
+        st.session_state['temp_upload_list'] = []
     
-    # Show sidebar with list of uploaded invoices
+    # Show sidebar with database invoices
     show_uploaded_list_sidebar()
     
-    # File uploader - accept multiple files by default
+    # File uploader
     st.markdown("### 📤 อัปโหลดไฟล์ CSV/Excel")
     uploaded_files = st.file_uploader(
         "เลือกไฟล์ (เลือกได้หลายไฟล์)", 
@@ -586,55 +586,82 @@ def show_upload():
     )
     
     if uploaded_files:
-        st.markdown(f"### 📚 อัปโหลด {len(uploaded_files)} ไฟล์")
+        st.markdown(f"### 📋 รายการไฟล์ที่อัปโหลด ({len(uploaded_files)} ไฟล์)")
         
-        # Process each file
-        new_invoices = []
+        # Process files but don't save yet - store in temp
+        temp_list = []
+        
+        # Get existing invoice numbers from DB
+        db_invoices = load_invoices_from_db()
+        existing_invoice_nos = {inv.get('invoice_no', '').strip() for inv in db_invoices if inv.get('invoice_no')}
         
         for uploaded_file in uploaded_files:
-            # Check if already uploaded
-            already_exists = any(inv.get('filename') == uploaded_file.name for inv in st.session_state['uploaded_invoices'])
-            
-            if already_exists:
-                st.info(f"📄 {uploaded_file.name} - มีอยู่แล้ว")
-                continue
-            
-            with st.expander(f"📄 {uploaded_file.name}"):
-                try:
-                    invoice_data = process_single_file(uploaded_file, return_data=True)
-                    if invoice_data:
-                        # Add to session state
-                        st.session_state['uploaded_invoices'].append(invoice_data)
-                        new_invoices.append(invoice_data)
-                except Exception as e:
-                    st.error(f"Error: {e}")
+            try:
+                invoice_data = process_single_file(uploaded_file, return_data=True)
+                if invoice_data:
+                    temp_list.append({
+                        'data': invoice_data,
+                        'filename': uploaded_file.name,
+                        'duplicate': invoice_data.get('invoice_no', '').strip() in existing_invoice_nos
+                    })
+            except Exception as e:
+                st.error(f"Error: {uploaded_file.name}: {e}")
         
-        if new_invoices:
-            for inv in new_invoices:
-                save_invoice_to_db(inv)
-            st.session_state['uploaded_invoices'] = load_invoices_from_db()
-            st.session_state['batch_invoices'] = st.session_state['uploaded_invoices']
-            st.success(f"✅ เพิ่ม {len(new_invoices)} ไฟล์สำเร็จ!")
-        
-        # Show summary of all uploaded
-        if st.session_state['uploaded_invoices']:
-            st.markdown("### 📊 สรุปไฟล์ที่อัปโหลดแล้ว")
-            summary_data = []
-            for inv in st.session_state['uploaded_invoices']:
-                summary_data.append({
-                    'File': inv.get('filename', 'Unknown'),
-                    'Invoice': inv.get('invoice_no', ''),
-                    'Customer': inv.get('customer_name', '')[:20],
-                    'Total (USD)': f"${float(inv['total_amount']):,.2f}",
-                    'Total (THB)': f"฿{float(inv['total_thb']):,.2f}"
-                })
+        # Show list with checkboxes
+        if temp_list:
+            st.markdown("### ✅ เลือก Invoice ที่จะบันทึกลงฐานข้อมูล:")
             
-            st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
+            # Check for duplicates
+            has_duplicates = any(t['duplicate'] for t in temp_list)
             
-            # Set batch invoices for preview
-            st.session_state['batch_invoices'] = st.session_state['uploaded_invoices']
+            if has_duplicates:
+                st.warning("⚠️ มี Invoice ที่มีอยู่แล้วในระบบ:")
             
-            st.info("👉 ไปที่เมนู 'Preview' เพื่อดูและออกเอกสาร")
+            selected_items = []
+            for i, item in enumerate(temp_list):
+                inv = item['data']
+                inv_no = inv.get('invoice_no', 'N/A')
+                job_no = inv.get('job_number', '-')
+                customer = inv.get('customer_name', 'N/A')[:40]
+                total = f"${float(inv.get('total_amount', 0)):,.2f}"
+                is_dup = "⚠️" if item['duplicate'] else ""
+                
+                col1, col2, col3, col4 = st.columns([1, 2, 5, 2])
+                with col1:
+                    selected = st.checkbox("เลือก", key=f"upload_sel_{i}", value=True)
+                with col2:
+                    st.markdown(f"**{inv_no}** {is_dup}")
+                with col3:
+                    st.markdown(f"Job: {job_no} | {customer}")
+                with col4:
+                    st.markdown(f"`{total}`")
+                
+                if selected:
+                    selected_items.append(inv)
+            
+            # Save button
+            if st.button("💾 บันทึกลงฐานข้อมูล", type="primary", key="save_to_db"):
+                if selected_items:
+                    for inv in selected_items:
+                        # Check if exists and delete first
+                        inv_no = inv.get('invoice_no', '').strip()
+                        if inv_no:
+                            conn = sqlite3.connect(DB_PATH)
+                            c = conn.cursor()
+                            c.execute('DELETE FROM invoices WHERE invoice_no = ?', (inv_no,))
+                            conn.commit()
+                            conn.close()
+                        
+                        save_invoice_to_db(inv)
+                    
+                    st.session_state['temp_upload_list'] = []
+                    st.success(f"✅ บันทึก {len(selected_items)} Invoice สำเร็จ!")
+                    st.rerun()
+                else:
+                    st.warning("กรุณาเลือกอย่างน้อย 1 Invoice")
+        else:
+            st.info("ไม่พบข้อมูล Invoice ในไฟล์")
+
 
 def show_uploaded_list_sidebar():
     """Show list of uploaded invoices in sidebar"""
