@@ -720,7 +720,12 @@ def main():
     else:
         st.sidebar.info("ℹ️ BOT API: Not configured (OK for local)")
     
-    menu = st.sidebar.radio("เมนู", ["📤 Upload", "📋 Invoice List", "⚙️ Settings", "👁️ Preview", "📊 History"])
+    # Initialize menu in session state
+    if 'menu' not in st.session_state:
+        st.session_state['menu'] = '📤 Upload'
+    
+    menu = st.sidebar.radio("เมนู", ["📤 Upload", "📋 Invoice List", "⚙️ Settings", "👁️ Preview", "📊 History"], 
+                          index=["📤 Upload", "📋 Invoice List", "⚙️ Settings", "👁️ Preview", "📊 History"].index(st.session_state['menu']))
     
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"**{COMPANY_NAME}**")
@@ -1133,6 +1138,7 @@ def show_invoice_list():
     with col1:
         if st.button("📤 อัปโหลดเพิ่ม", key="btn_upload_more"):
             st.session_state['menu'] = '📤 Upload'
+            st.session_state.pop('_menu_to_rerun', None)
             st.rerun()
     with col2:
         if st.button("👁️ ไป Preview", key="btn_go_preview"):
