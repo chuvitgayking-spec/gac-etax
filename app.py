@@ -19,6 +19,33 @@ COMPANY_TEL = "+66 2 676 1900"
 COMPANY_FAX = "+66 2 676 1990"
 
 DB_PATH = '/Users/chuvit/.openclaw/workspace/gac_etax/data/invoices.db'
+UPLOAD_DIR = '/Users/chuvit/.openclaw/workspace/gac_etax/data/uploads'
+
+def list_uploaded_files():
+    """List all uploaded files"""
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    files = []
+    for f in os.listdir(UPLOAD_DIR):
+        filepath = os.path.join(UPLOAD_DIR, f)
+        if os.path.isfile(filepath):
+            files.append({'filename': f, 'filepath': filepath})
+    return sorted(files, key=lambda x: x['filename'], reverse=True)
+
+def save_uploaded_file(uploaded_file):
+    """Save uploaded file to uploads directory"""
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{uploaded_file.name}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, 'wb') as f:
+        f.write(uploaded_file.getbuffer())
+    return filename, filepath
+
+def delete_uploaded_file(filename):
+    """Delete uploaded file"""
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
 
 def save_invoice_to_db(invoice_data, status='pending'):
     """Save invoice to database for persistence"""
