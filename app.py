@@ -399,19 +399,15 @@ def generate_pdf(invoice_data):
     story.append(items_table)
     story.append(Spacer(1, 10))
     
-    # Totals
+    # Totals in both USD and THB
     totals = [
-        ['Subtotal:', f"${float(invoice_data['subtotal']):,.2f}"],
-        ['VAT 7%:', f"${float(invoice_data['vat_amount']):,.2f}"],
-        ['TOTAL:', f"${float(invoice_data['total_amount']):,.2f}"],
-        [f'@ {invoice_data["exchange_rate"]} THB', f"฿{float(invoice_data['total_thb']):,.2f}"],
+        ['Subtotal (USD):', f"${float(invoice_data['subtotal']):,.2f}", 'Subtotal (THB):', f"฿{float(invoice_data['subtotal']) * float(invoice_data['exchange_rate']):,.2f}"],
+        ['VAT 7% (USD):', f"${float(invoice_data['vat_amount']):,.2f}", 'VAT 7% (THB):', f"฿{float(invoice_data['vat_amount']) * float(invoice_data['exchange_rate']):,.2f}"],
+        ['TOTAL (USD):', f"${float(invoice_data['total_amount']):,.2f}", 'TOTAL (THB):', f"฿{float(invoice_data['total_thb']):,.2f}"],
     ]
-    totals_table = Table(totals, colWidths=[15*cm, 5*cm])
-    totals_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
-        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-    ]))
+    
+    totals_table = Table(totals, colWidths=[4*cm, 3*cm, 4*cm, 4*cm])
+
     story.append(totals_table)
     
     doc.build(story)
@@ -955,6 +951,154 @@ def show_preview():
     if 'items' not in st.session_state:
         st.warning("⚠️ กรุณาอัปโหลดไฟล์ก่อน")
         return
+
+def show_batch_preview():
+    """Preview and issue multiple invoices"""
+    batch = st.session_state['batch_invoices']
+    
+    st.markdown(f"### 📚 {len(batch)} Invoices Ready")
+    
+    # Select which invoice to preview
+    options = [f"{inv.get('filename', inv.get('invoice_no', 'Unknown'))} - {inv.get('customer_name', '')[:20]}" for inv in batch]
+    options.append("📋 ทั้งหมด")
+    
+    selected = st.selectbox("เลือก Invoice ที่จะ Preview:", options, key="batch_select")
+    
+    if selected == "📋 ทั้งหมด":
+        # Show all invoices
+        for i, inv in enumerate(batch):
+            with st.expander(f"📄 {inv.get('filename', inv.get('invoice_no', f'Invoice {i+1}'))}"):
+                show_pdf_preview(inv, key_suffix=f"_batch_{i}")
+    else:
+        idx = options.index(selected)
+        inv = batch[idx]
+        show_pdf_preview(inv, key_suffix="_batch_selected")
+
+def show_pdf_preview(invoice_data, key_suffix=""):
+    """Show PDF-like preview of invoice"""
+    from decimal import Decimal
+    
+    # Calculate THB totals
+    exchange_rate = Decimal(str(invoice_data.get('exchange_rate', 30.909)))
+    
+    # Custom styled preview (like PDF)
+    st.markdown("---")
+    st.markdown(f"""
+    <div style="
+        border: 2px solid #1e3a5f;
+        border-radius: 10px;
+        padding: 20px;
+        background: white;
+        font-family: Arial, sans-serif;
+    ">
+        <h2 style="text-align: center; color: #1e3a5f; margin: 0;">ใบเสร็จรับเงิน / RECEIPT</h2>
+        <hr>
+        <table style="width: 100%;">
+            <tr>
+                <td><b>🏢 {invoice_data.get('customer_name', 'Customer')}</b></td>
+                <td style="text-align: right;"><b>Invoice No:</b> {invoice_data.get('invoice_no', '-')}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><b>Job No:</b> {invoice_data.get('job_number', '-')} | <b>AWB:</b> {invoice_data.get('awb', '-')}</td>
+            </tr>
+            <tr>
+                <td><b>Date:</b> {invoice_data.get('invoice_date', '-')}</td>
+                <td style="text-align: right;"><b>Rate:</b> {exchange_rate} THB/USD</td>
+            </tr>
+        </table>
+        <hr>
+        <table style="width: 100%; border-collapse: collapse;" border="1">
+            <tr style="background: #f0f0f0;">
+                <th style="padding: 8px;">#</th>
+                <th style="padding: 8px;">Description</th>
+                <th style="padding: 8px; text-align: right;">USD</th>
+                <th style="padding: 8px; text-align: right;">VAT</th>
+                <th style="padding: 8px; text-align: right;">THB</th>
+            </tr>
+    """, unsafe_allow_html=True)
+    
+    # Show items in THB
+    for item in invoice_data.get('items', []):
+        usd = float(item.get('amount', 0))
+        vat = float(item.get('vat_amount', 0))
+        thb = usd * float(exchange_rate)
+        
+        st.markdown(f"""
+            <tr>
+                <td style="padding: 5px;">{item.get('item_no', '')}</td>
+                <td style="padding: 5px;">{item.get('description', '')[:35]}</td>
+                <td style="padding: 5px; text-align: right;">${usd:,.2f}</td>
+                <td style="padding: 5px; text-align: right;">{item.get('vat_rate', 0)}%</td>
+                <td style="padding: 5px; text-align: right;">฿{thb:,.2f}</td>
+            </tr>
+        """, unsafe_allow_html=True)
+    
+    # Totals in THB
+    total_usd = float(invoice_data.get('total_amount', 0))
+    total_vat = float(invoice_data.get('vat_amount', 0))
+    total_thb = total_usd * float(exchange_rate)
+    
+    st.markdown(f"""
+        </table>
+        <hr>
+        <table style="width: 100%;">
+            <tr>
+                <td style="text-align: right;"><b>Subtotal:</b></td>
+                <td style="text-align: right;">${total_usd - total_vat:,.2f}</td>
+            </tr>
+            <tr>
+                <td style="text-align: right;"><b>VAT 7%:</b></td>
+                <td style="text-align: right;">${total_vat:,.2f}</td>
+            </tr>
+            <tr style="background: #e0e0e0; font-size: 18px;">
+                <td style="text-align: right; padding: 10px;"><b>TOTAL (THB):</b></td>
+                <td style="text-align: right; padding: 10px;"><b>฿{total_thb:,.2f}</b></td>
+            </tr>
+        </table>
+        <hr>
+        <p style="text-align: center; color: #666;">Exchange Rate: 1 USD = {exchange_rate} THB</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Generate buttons
+    st.markdown("### 🧾 ออกเอกสาร")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        gen_pdf = st.checkbox("📄 PDF", value=True, key=f"pdf{key_suffix}")
+    with col2:
+        gen_xml = st.checkbox("📄 e-Tax XML", value=False, key=f"xml{key_suffix}")
+    
+    if st.button("🎫 Generate & Download", type="primary", key=f"gen{key_suffix}"):
+        running_no = get_next_running_number('GAC')
+        invoice_data['running_no'] = running_no
+        invoice_data['file_source'] = invoice_data.get('filename', '')
+        
+        save_invoice(invoice_data)
+        
+        st.success(f"✅ Running No: {running_no}")
+        
+        if gen_pdf:
+            pdf_buffer = generate_pdf(invoice_data)
+            st.download_button(
+                "📥 Download PDF",
+                pdf_buffer.getvalue(),
+                file_name=f"Receipt_{running_no}.pdf",
+                mime="application/pdf",
+                key=f"dl_pdf{key_suffix}"
+            )
+        
+        if gen_xml:
+            xml_buffer = generate_xml(invoice_data)
+            st.download_button(
+                "📥 Download XML",
+                xml_buffer.getvalue(),
+                file_name=f"ETax_{running_no}.xml",
+                mime="application/xml",
+                key=f"dl_xml{key_suffix}"
+            )
     
     # Calculate totals
     items = st.session_state['items']
