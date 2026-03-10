@@ -222,6 +222,21 @@ def load_invoices_from_db():
                 except Exception as e:
                     print(f"CSV error: {e}")
             
+            # Calculate subtotal and VAT
+            subtotal = total_amount / 1.07  # Remove VAT
+            vat_amount = total_amount - subtotal
+            
+            # If no items, create a default one
+            if not items:
+                items = [{
+                    'item_no': 1,
+                    'description': 'Freight Charges',
+                    'amount': subtotal,
+                    'category': 'VAT_7',
+                    'vat_rate': 7,
+                    'vat_amount': vat_amount
+                }]
+            
             invoices.append({
                 'id': i,
                 'filename': filename,
@@ -232,9 +247,11 @@ def load_invoices_from_db():
                 'job_number': job_number,
                 'awb': awb,
                 'exchange_rate': 30.909,
+                'subtotal': subtotal,
+                'vat_amount': vat_amount,
                 'total_amount': total_amount,
                 'total_thb': total_amount * 30.909,
-                'items': items if items else [],
+                'items': items,
                 'status': 'pending',
                 'created_at': filename[:8]
             })
