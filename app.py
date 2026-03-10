@@ -493,7 +493,7 @@ def main():
     else:
         st.sidebar.info("ℹ️ BOT API: Not configured (OK for local)")
     
-    menu = st.sidebar.radio("เมนู", ["📤 Upload", "⚙️ Settings", "👁️ Preview", "📊 History"])
+    menu = st.sidebar.radio("เมนู", ["📤 Upload", "📋 Invoice List", "⚙️ Settings", "👁️ Preview", "📊 History"])
     
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"**{COMPANY_NAME}**")
@@ -501,6 +501,8 @@ def main():
     
     if menu == "📤 Upload":
         show_upload()
+    elif menu == "📋 Invoice List":
+        show_invoice_list()
     elif menu == "⚙️ Settings":
         show_settings()
     elif menu == "👁️ Preview":
@@ -749,6 +751,145 @@ def calculate_invoice(items, exchange_rate, info):
         'total_thb': total_thb,
         'items': processed_items
     }
+
+
+def show_invoice_list():
+    """Show list of all uploaded invoices for editing"""
+    st.markdown('<p class="main-header">📋 Invoice List</p>', unsafe_allow_html=True)
+    
+    if 'uploaded_invoices' not in st.session_state or not st.session_state['uploaded_invoices']:
+        st.warning("⚠️ ยังไม่มี Invoice")
+        if st.button("📤 ไปหน้าอัปโหลด"):
+            st.session_state['menu'] = '📤 Upload'
+            st.rerun()
+        return
+    
+    invoices = st.session_state['uploaded_invoices']
+    
+    st.markdown(f"### 📋 รายการ Invoice ({len(invoices)} ใบ)")
+    
+    # Show table with all invoices
+    data = []
+    for i, inv in enumerate(invoices):
+        data.append({
+            'No.': i + 1,
+            'Filename': inv.get('filename', '-'),
+            'Invoice No': inv.get('invoice_no', '-'),
+            'Customer': inv.get('customer_name', '-')[:30],
+            'Date': inv.get('invoice_date', '-'),
+            'Total (USD)': f"${float(inv.get('total_amount', 0)):,.2f}",
+            'Total (THB)': f"฿{float(inv.get('total_thb', 0)):,.2f}",
+        })
+    
+    df = pd.DataFrame(data)
+    st.dataframe(df, use_container_width=True)
+    
+    # Edit section
+    st.markdown("### ✏️ แก้ไข Invoice")
+    
+    # Select invoice to edit
+    options = [f"{i+1}. {inv.get('filename', inv.get('invoice_no', f'Invoice {i+1}'))}" for i, inv in enumerate(invoices)]
+    selected_idx = st.selectbox("เลือก Invoice ที่จะแก้ไข:", range(len(options)), format_func=lambda x: options[x])
+    
+    # Show selected invoice details
+    inv = invoices[selected_idx]
+    
+    with st.expander(f"✏️ แก้ไข: {inv.get('filename', inv.get('invoice_no', 'Invoice'))}", expanded=True):
+        # Edit form
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            new_inv_no = st.text_input("Invoice No", value=inv.get('invoice_no', ''), key=f"edit_inv_{selected_idx}")
+        with col2:
+            new_date = st.text_input("Date", value=inv.get('invoice_date', ''), key=f"edit_date_{selected_idx}")
+        
+        new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
+        new_rate = st.number_input("Exchange Rate (USD/THB)", value=float(inv.get('exchange_rate', 30.909)), min_value=1.0, step=0.001, key=f"edit_rate_{selected_idx}")
+        
+        # Update button
+        if st.button("💾 บันทึกการแก้ไข", key=f"save_{selected_idx}"):
+            invoices[selected_idx]['invoice_no'] = new_inv_no
+            invoices[selected_idx]['invoice_date'] = new_date
+            invoices[selected_idx]['customer_name'] = new_customer
+            invoices[selected_idx]['exchange_rate'] = new_rate
+            
+            # Recalculate totals
+            recalculate_invoice(invoices[selected_idx])
+            
+            st.success("✅ บันทึกสำเร็จ!")
+            st.rerun()
+        
+        # Show items
+        st.markdown("#### รายการสินค้า")
+        items = inv.get('items', [])
+        if items:
+            for j, item in enumerate(items):
+                with st.expander(f"Item {j+1}: {item.get('description', '')}"):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        new_desc = st.text_input("Description", value=item.get('description', ''), key=f"item_desc_{selected_idx}_{j}")
+                    with col2:
+                        new_amount = st.number_input("Amount (USD)", value=float(item.get('amount', 0)), min_value=0.0, step=0.01, key=f"item_amt_{selected_idx}_{j}")
+                    with col3:
+                        new_cat = st.selectbox("VAT Category", ["NON_VAT", "VAT_7", "PARTIAL_VAT"], 
+                                            index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(item.get('category', 'VAT_7')),
+                                            key=f"item_cat_{selected_idx}_{j}")
+                    
+                    # Save item changes
+                    if st.button(f"💾 บันทึก Item {j+1}", key=f"save_item_{selected_idx}_{j}"):
+                        item['description'] = new_desc
+                        item['amount'] = new_amount
+                        item['category'] = new_cat
+                        item['vat_rate'] = 0 if new_cat == "NON_VAT" else 7
+                        item['vat_amount'] = Decimal(str(new_amount)) * Decimal('0.07') if new_cat == "VAT_7" else Decimal('0')
+                        
+                        # Recalculate
+                        recalculate_invoice(invoices[selected_idx])
+                        st.success("✅ บันทึกสำเร็จ!")
+                        st.rerun()
+    
+    # Navigation buttons
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📤 อัปโหลดเพิ่ม"):
+            st.session_state['menu'] = '📤 Upload'
+            st.rerun()
+    with col2:
+        if st.button("👁️ ไป Preview"):
+            st.session_state['batch_invoices'] = invoices
+            st.session_state['menu'] = '👁️ Preview'
+            st.rerun()
+
+def recalculate_invoice(invoice):
+    """Recalculate invoice totals"""
+    from decimal import Decimal
+    
+    rate = Decimal(str(invoice.get('exchange_rate', 30.909)))
+    subtotal = Decimal('0')
+    vat_total = Decimal('0')
+    
+    for item in invoice.get('items', []):
+        amount = Decimal(str(item.get('amount', 0)))
+        category = item.get('category', 'VAT_7')
+        
+        if category == 'NON_VAT':
+            vat_amount = Decimal('0')
+        else:
+            vat_amount = amount * Decimal('0.07')
+        
+        amount_thb = amount * rate
+        
+        item['vat_amount'] = vat_amount
+        item['amount_thb'] = amount_thb
+        
+        subtotal += amount
+        vat_total += vat_amount
+    
+    invoice['subtotal'] = subtotal
+    invoice['vat_amount'] = vat_total
+    invoice['total_amount'] = subtotal + vat_total
+    invoice['total_thb'] = (subtotal + vat_total) * rate
 
 def show_settings():
     st.markdown('<p class="main-header">⚙️ Tax Mapping Settings</p>', unsafe_allow_html=True)
