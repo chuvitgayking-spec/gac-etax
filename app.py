@@ -1272,7 +1272,16 @@ def show_invoice_list():
     st.markdown("### 🧾 ออกใบเสร็จ")
     
     # Select invoice to edit
-    options = [f"{inv.get('invoice_no', 'N/A')} | {inv.get('customer_name', 'Unknown')[:25]}" for inv in invoices]
+    options = []
+    for inv in invoices:
+        name = inv.get('customer_name', 'Unknown')[:25]
+        addr = inv.get('customer_address', '')
+        # Shorten address for display
+        if addr:
+            addr_short = addr.replace('\n', ', ')[:30]
+            options.append(f"{inv.get('invoice_no', 'N/A')} | {name} | {addr_short}")
+        else:
+            options.append(f"{inv.get('invoice_no', 'N/A')} | {name}")
     selected_idx = st.selectbox("เลือก Invoice ที่จะออกใบเสร็จ:", range(len(options)), format_func=lambda x: options[x])
     
     # Show selected invoice details
@@ -1482,7 +1491,15 @@ def show_batch_preview():
     st.markdown(f"### 📚 {len(batch)} Invoices Ready")
     
     # Select which invoice to preview
-    options = [f"{inv.get('filename', inv.get('invoice_no', 'Unknown'))} - {inv.get('customer_name', '')[:20]}" for inv in batch]
+    options = []
+    for inv in batch:
+        name = inv.get('customer_name', '')[:20]
+        addr = inv.get('customer_address', '')
+        if addr:
+            addr_short = addr.replace('\n', ', ')[:25]
+            options.append(f"{inv.get('filename', inv.get('invoice_no', 'Unknown'))} - {name} | {addr_short}")
+        else:
+            options.append(f"{inv.get('filename', inv.get('invoice_no', 'Unknown'))} - {name}")
     options.append("📋 ทั้งหมด")
     
     selected = st.selectbox("เลือก Invoice ที่จะ Preview:", options, key="batch_select")
@@ -1807,7 +1824,15 @@ def show_batch_preview():
     st.markdown(f"### 📚 {len(batch)} Invoices Ready")
     
     # Select which invoice to preview
-    options = [f"{inv.get('filename', inv.get('invoice_no', 'Unknown'))} - {inv.get('customer_name', '')[:20]}" for inv in batch]
+    options = []
+    for inv in batch:
+        name = inv.get('customer_name', '')[:20]
+        addr = inv.get('customer_address', '')
+        if addr:
+            addr_short = addr.replace('\n', ', ')[:25]
+            options.append(f"{inv.get('filename', inv.get('invoice_no', 'Unknown'))} - {name} | {addr_short}")
+        else:
+            options.append(f"{inv.get('filename', inv.get('invoice_no', 'Unknown'))} - {name}")
     options.append("📋 ทั้งหมด")
     
     selected = st.selectbox("เลือก Invoice ที่จะ Preview:", options, key="batch_select")
