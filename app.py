@@ -284,12 +284,22 @@ def load_invoices_from_db():
                     print(f"DEBUG: XML has Details2: {has_details2}")
                     print(f"DEBUG: XML length = {len(xml_str)}")
                     
+                    # Also check for key strings
+                    has_TabServiceDetails = 'TabServiceDetails' in xml_str
+                    has_TabInvoiceSummary = 'TabInvoiceSummary' in xml_str
+                    print(f"DEBUG: Has TabServiceDetails: {has_TabServiceDetails}, Has TabInvoiceSummary: {has_TabInvoiceSummary}")
+                    
                     try:
                         # Find Details2 tags for items
                         details2_pattern = r'<Details2\s+[^>]*>'
                         details2_matches = re.findall(details2_pattern, xml_str)
                         
-                        print(f"DEBUG: Found {len(details2_matches)} Details2 elements")
+                        print(f"DEBUG: Found {len(details2_matches)} Details2 elements with pattern 1")
+                        
+                        # Try alternate pattern
+                        alt_pattern = r'<Details2'
+                        alt_matches = re.findall(alt_pattern, xml_str)
+                        print(f"DEBUG: Found {len(alt_matches)} Details2 with simple pattern")
                         
                         for detail in details2_matches:
                             # Extract description (Textbox17)
