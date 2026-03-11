@@ -219,7 +219,7 @@ def load_invoices_from_db():
                     seen = set()
                     
                     for match in re.finditer(r'ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
-                        desc = match.group(1).replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
+                        desc = match.group(1).replace('&amp;', '&').replace('&#xD;', '\n').replace('&#xA;', '\n').replace('&#13;', '\n').replace('&#10;', '\n').strip()
                         try:
                             amt = float(match.group(2))
                         except:
