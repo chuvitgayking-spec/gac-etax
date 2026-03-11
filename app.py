@@ -1314,21 +1314,21 @@ def show_invoice_list():
         items = inv.get('items', [])
         if items:
             for j, item in enumerate(items):
-                with st.expander(f"Item {j+1}: {item.get('description', '')}"):
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        new_desc = st.text_input("Description", value=item.get('description', ''), key=f"item_desc_{selected_idx}_{j}")
-                    with col2:
-                        new_amount = st.number_input("Amount (USD)", value=float(item.get('amount', 0)), min_value=0.0, step=0.01, key=f"item_amt_{selected_idx}_{j}")
-                    with col3:
-                        new_cat = st.selectbox("VAT Category", ["NON_VAT", "VAT_7", "PARTIAL_VAT"], 
-                                            index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(item.get('category', 'VAT_7')),
-                                            key=f"item_cat_{selected_idx}_{j}")
-                    
-                    # Auto-save on change
-                    item['description'] = new_desc
-                    item['amount'] = new_amount
-                    item['category'] = new_cat
+                # Show all items without expander
+                col1, col2, col3 = st.columns([4, 2, 2])
+                with col1:
+                    new_desc = st.text_input(f"Item {j+1} Description", value=item.get('description', ''), key=f"item_desc_{selected_idx}_{j}")
+                with col2:
+                    new_amount = st.number_input(f"Item {j+1} Amount", value=float(item.get('amount', 0)), min_value=0.0, step=0.01, key=f"item_amt_{selected_idx}_{j}")
+                with col3:
+                    new_cat = st.selectbox(f"Item {j+1} VAT", ["NON_VAT", "VAT_7", "PARTIAL_VAT"], 
+                                        index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(item.get('category', 'VAT_7')),
+                                        key=f"item_cat_{selected_idx}_{j}")
+                
+                # Auto-save on change
+                item['description'] = new_desc
+                item['amount'] = new_amount
+                item['category'] = new_cat
     
     # Navigation buttons
     st.markdown("---")
