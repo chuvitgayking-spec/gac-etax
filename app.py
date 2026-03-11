@@ -311,10 +311,9 @@ def load_invoices_from_db():
                     # Build items from ServiceCode2 + Textbox61
                     for i in range(min(len(service_codes), len(amounts_61))):
                         try:
-                            desc = service_codes[i].replace('&amp;', '&').strip()
-                            if not desc:
-                                continue
-                            amt = float(amounts_61[i])
+                            item_no = d[0]
+                            desc = d[1].replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
+                            amt = float(d[2])
                             
                             if desc and amt > 0:
                                 items.append({
