@@ -161,7 +161,10 @@ def load_invoices_from_db():
                     if match:
                         raw_name = match.group(1).replace("Billing Party:", "").replace('&#13;', ' ').replace('&#10;', ' ').replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
                     # Get first line (name only, not address)
-                    customer_name = raw_name.split('\n')[0].split('\r')[0].strip()  # First 4 words
+                    customer_name = raw_name.split('\n')[0].split('\r')[0].strip()
+                    address = ' '.join(raw_name.split('\n')[1:]).strip() if '\n' in raw_name else ''
+                    if address:
+                        customer_name = customer_name + ' | ' + address[:50]  # First 4 words
                     
                     # Find Textbox188 (Job No)
                     match = re.search(r'Textbox188="([^"]*)"', xml_str)
