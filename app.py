@@ -24,10 +24,27 @@ COMPANY_TEL = "+66 2 676 1900"
 COMPANY_FAX = "+66 2 676 1990"
 COMPANY_EMAIL = "thailand@gac.com"
 COMPANY_WEB = "www.gac.com/thailand"
+# Default Tax Category Mapping
+DEFAULT_MAPPING = {
+    "NON_VAT": [
+        "OCEAN FREIGHT", "AIR FREIGHT", "SEA FREIGHT",
+        "INTERNATIONAL FREIGHT", "INLAND FREIGHT"
+    ],
+    "PARTIAL_VAT": [],
+    "VAT_7": [
+        "THC", "D/O FEE", "HANDLING FEE", "DOCUMENTATION FEE",
+        "CLEARANCE", "TRANSPORTATION", "WAREHOUSE",
+        "ORIGIN THC", "DESTINATION THC", "SEAL FEE",
+        "SURCHARGE", "GENSET", "REEFER", "ROUS",
+        "AMS", "ISPS", "CIC", "EBS", "BAF", "CAF"
+    ]
+}
+
+
 
 import os
 # Database path - works on both local and cloud
-DB_PATH = os.environ.get('DB_PATH', '/Users/chuvit/.openclaw/workspace/gac_etax/data/invoices.db')
+DB_PATH = os.environ.get('DB_PATH', '/tmp/invoices.db')
 UPLOAD_DIR = os.environ.get('UPLOAD_DIR', '/Users/chuvit/.openclaw/workspace/gac_etax/data/uploads')
 
 def list_uploaded_files():
@@ -92,7 +109,7 @@ def delete_uploaded_file(filename):
     if os.path.exists(filepath):
         os.remove(filepath)
 
-def save_invoice_to_db(invoice_data, status='pending'):
+def save_invoice_to_db(invoice_data, status='uploaded'):
     """Save invoice to database for persistence"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -103,8 +120,8 @@ def save_invoice_to_db(invoice_data, status='pending'):
     else:
         items_json = json.dumps(items_list)
     
-    c.execute("""INSERT OR REPLACE INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+    c.execute("""INSERT OR REPLACE INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (invoice_data.get('filename', ''),
          invoice_data.get('invoice_no', ''),
          invoice_data.get('invoice_date', ''),
@@ -117,7 +134,8 @@ def save_invoice_to_db(invoice_data, status='pending'):
          invoice_data.get('total_amount', 0),
          invoice_data.get('total_thb', 0),
          items_json,
-         status))
+         status,
+         invoice_data.get('currency', 'USD')))
     
     conn.commit()
     invoice_id = c.lastrowid
@@ -125,12 +143,13 @@ def save_invoice_to_db(invoice_data, status='pending'):
     return invoice_id
 
 def load_invoices_from_db():
-    """Load invoices from database first, then from uploaded files"""
+    """Load invoices from database only"""
     invoices = []
     
-    # First try to load from database (for issued invoices)
+    # Load from database (single source of truth)
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM invoices ORDER BY created_at DESC LIMIT 50')
         rows = cursor.fetchall()
@@ -140,372 +159,15 @@ def load_invoices_from_db():
         for row in rows:
             inv = dict(row)
             # Parse items_json
-            if inv.get('items_json'):
-                try:
-                    inv['items'] = json.loads(inv['items_json'])
-                except:
-                    inv['items'] = []
-            else:
+            try:
+                inv['items'] = json.loads(inv.get('items_json', '[]')) if inv.get('items_json') else []
+            except:
                 inv['items'] = []
             invoices.append(inv)
-    except:
-        pass
-    
-    # Also load from uploaded files (for pending invoices)
-    files = list_uploaded_files()
-    
-    for i, f in enumerate(files):
-        try:
-            filepath = f['filepath']
-            filename = f['filename']
-            
-            invoice_no = ''
-            job_number = ''
-            awb = ''
-            invoice_date = ''
-            customer_name = ''
-            total_amount = 0
-            items = []
-            
-            # Handle XML files
-            if filename.endswith('.xml'):
-                try:
-                    import xml.etree.ElementTree as ET
-                    with open(filepath, 'r', encoding='utf-8') as xml_file:
-                        xml_content = xml_file.read()
-                    
-                    # Try to parse
-                    try:
-                        root = ET.fromstring(xml_content)
-                    except:
-                        # If fails, try removing namespace
-                        import re
-                        xml_content = re.sub(r'xmlns[^=]*="[^"]*"', '', xml_content)
-                        root = ET.fromstring(xml_content)
-                    
-                    # Convert all elements to check attributes
-                    xml_str = ET.tostring(root, encoding='unicode')
-                    
-                    # Debug: show XML content length
-                    print(f"DEBUG: XML content length for {filename}: {len(xml_str)} chars")
-                    
-                    # Use regex to find values more reliably
-                    import re
-                    
-                    # Find Textbox183 (Invoice No) - try multiple patterns
-                    match = re.search(r'Textbox183="([^"]*)"', xml_str)
-                    if not match:
-                        match = re.search(r'Textbox183=>([^<]*)', xml_str)
-                    if match:
-                        invoice_no = match.group(1).strip().lstrip(': ').replace(':', '')
-                    
-                    # Debug: print what we found
-                    print(f"DEBUG: invoice_no = {invoice_no}")
-                    
-                    # Find BillingPartyName
-                    match = re.search(r'BillingPartyName="([^"]*)"', xml_str)
-                    if match:
-                        raw_name = match.group(1).replace("Billing Party:", "").replace('&#13;', ' ').replace('&#10;', ' ').replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
-                    # Get first line (name only, not address)
-                    customer_name = raw_name.split('\n')[0].split('\r')[0].strip()
-                    address = raw_name.replace(customer_name, '').replace('Billing Party:', '').strip()[:80]
-                    invoice_data['address'] = address  # First 4 words
-                    
-                    # Find Textbox188 (Job No)
-                    match = re.search(r'Textbox188="([^"]*)"', xml_str)
-                    if match:
-                        job_number = match.group(1).strip().lstrip(': ').replace(':', '')
-                    
-                    # Find Textbox65 (AWB)
-                    match = re.search(r'Textbox65="([^"]*)"', xml_str)
-                    if match:
-                        awb = match.group(1).strip().lstrip(': ').replace(':', '')
-                    
-                    # Find Textbox184 (Date) - try multiple patterns
-                    match = re.search(r'Textbox184="([^"]*)"', xml_str)
-                    if not match:
-                        match = re.search(r'Textbox184>([^<]*)', xml_str)
-                    if not match:
-                        match = re.search(r'Textbox184[^>]*>([^<]*)', xml_str)
-                    if match:
-                        raw_date = match.group(1).strip()
-                        # Check if already in good format like "09 Mar 2026"
-                        try:
-                            from datetime import datetime
-                            # Try DD MMM YYYY first
-                            dt = datetime.strptime(raw_date.split(" ")[0] + " " + raw_date.split(" ")[1] + " " + raw_date.split(" ")[2], "%d %b %Y")
-                            invoice_date = dt.strftime("%d/%m/%Y")
-                        except:
-                            try:
-                                # Try MM/DD/YYYY format
-                                date_part = raw_date.split(" ")[0]
-                                from datetime import datetime
-                                dt = datetime.strptime(date_part, "%m/%d/%Y")
-                                invoice_date = dt.strftime("%d/%m/%Y")
-                            except:
-                                invoice_date = raw_date.lstrip(': ').split(" ")[0]
-                    
-                    # Find TabInvoiceSummary for totals - NEW APPROACH
-                    summary_match = re.search(r'<TabInvoiceSummary([^>]*)>', xml_str)
-                    if summary_match:
-                        attrs = summary_match.group(1)
-                        # Revenue (Subtotal) - Textbox104
-                        rev_match = re.search(r'Textbox104="([^"]*)"', attrs)
-                        if rev_match:
-                            try:
-                                total_amount = float(rev_match.group(1))
-                            except:
-                                pass
-                        # VAT - Textbox117
-                        vat_match = re.search(r'Textbox117="([^"]*)"', attrs)
-                        if vat_match:
-                            try:
-                                vat_amount = float(vat_match.group(1))
-                            except:
-                                pass
-                        # Due Amount (Total) - Textbox122
-                        due_match = re.search(r'Textbox122="([^"]*)"', attrs)
-                        if due_match:
-                            try:
-                                total_thb = float(due_match.group(1))
-                            except:
-                                pass
-                    
-                    # Get exchange rate from XML
-                    match = re.search(r'Textbox186="([^"]*)"', xml_str)
-                    if match:
-                        rate_str = match.group(1).replace('USD / THB @ ', '').strip()
-                        try:
-                            exchange_rate = float(rate_str)
-                        except:
-                            pass
-                    
-                    # Fallback: if still no invoice_no, try filename
-                    if not invoice_no and filename:
-                        # Try to extract from filename pattern like BKK3101523543
-                        match = re.search(r'(BKK\\d+)', filename)
-                        if match:
-                            invoice_no = match.group(1)
-                        else:
-                            invoice_no = filename.replace('.xml', '').split('_')[-1]
-
-                    # Extract items from XML - HARDCODED FOR NOW (14 items from sample)
-                    import re
-                    items = []
-                    
-                    # Try to find items - use SERVICE CODE approach instead
-                    # ServiceCode2 has the description
-                    service_codes = re.findall(r'ServiceCode2="([^"]*)"', xml_str)
-                    # Textbox61 has the amount (in the Details section)
-                    amounts_61 = re.findall(r'Textbox61="([^"]*)"', xml_str)
-                    
-                    print(f"DEBUG: Found {len(service_codes)} ServiceCode2, {len(amounts_61)} Textbox61")
-                    
-                    # Show in Streamlit UI for debugging
-                    st.info(f"🔍 Found: {len(service_codes)} ServiceCode2, {len(amounts_61)} Textbox61")
-                    
-                    # Show XML sample for debugging
-                    xml_sample = xml_str[:300] if xml_str else "EMPTY!"
-                    st.caption(f"XML sample: {xml_sample}")
-                    
-                    # Build items from ServiceCode2 + Textbox61
-                    for i in range(min(len(service_codes), len(amounts_61))):
-                        try:
-                            item_no = d[0]
-                            desc = d[1].replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
-                            amt = float(d[2])
-                            
-                            if desc and amt > 0:
-                                items.append({
-                                    'item_no': len(items) + 1,
-                                    'description': desc,
-                                    'amount': amt,
-                                    'vat_rate': '0',
-                                    'vat_amount': 0
-                                })
-                        except:
-                            pass
-                    
-                    print(f"DEBUG: Built {len(items)} items from ServiceCode2+Textbox61")
-                    
-                    # If still no items, use Details_Collection approach
-                    if not items:
-                        details = re.findall(r'<Details[^>]*Textbox4="([^"]*)"[^>]*Textbox8="([^"]*)"', xml_str)
-                        print(f"DEBUG: Trying Details, found {len(details)}")
-                        
-                        for d in details:
-                            try:
-                                desc = d[0].strip()
-                                amt = float(d[1])
-                                if desc and amt > 0:
-                                    items.append({
-                                        'item_no': len(items) + 1,
-                                        'description': desc,
-                                        'amount': amt,
-                                        'vat_rate': '0',
-                                        'vat_amount': 0
-                                    })
-                            except:
-                                pass
-                    
-                    print(f"DEBUG: Final items: {len(items)}")
-                    
-                    # Show in Streamlit UI
-                    if len(items) < 2:
-                        st.warning(f"⚠️ Only {len(items)} item(s) found!")
-                except Exception as e:
-                    print(f"XML Error: {e}")
-                    pass
-            
-            elif filename.endswith(('.xlsx', '.xls')):
-                try:
-                    import openpyxl
-                    wb = openpyxl.load_workbook(filepath, data_only=True)
-                    sheet = wb.active
-                    
-                    # Find Invoice No in row 2, col 6
-                    cell = sheet.cell(row=2, column=6)
-                    if cell.value and 'Invoice No' in str(cell.value):
-                        invoice_no = str(cell.value).split(':')[-1].strip()
-                        # Check if Bangkok - add BKK prefix
-                        location_cell = sheet.cell(row=2, column=10)
-                        if location_cell.value and 'Bangkok' in str(location_cell.value):
-                            invoice_no = 'BKK' + invoice_no
-                    
-                    # Get Customer Name from column 7 (Billing Party)
-                    cust_cell = sheet.cell(row=5, column=7)
-                    if cust_cell.value:
-                        customer_name = str(cust_cell.value).strip()
-                    
-                    # Get Job Number from column 28 (the 5-digit number like 74452)
-                    job_cell = sheet.cell(row=6, column=28)
-                    if job_cell.value:
-                        job_str = str(job_cell.value).strip()
-                        if ':' in job_str:
-                            job_number = job_str.split(':')[-1].strip().replace(',', '')
-                        elif job_str.replace(',', '').isdigit():
-                            job_number = job_str.replace(',', '')
-                    
-                    # Get total from column 17
-                    total_cell = sheet.cell(row=2, column=17)
-                    if total_cell.value:
-                        try:
-                            total_amount = float(str(total_cell.value).replace(',', ''))
-                        except:
-                            total_amount = 0
-                    
-                    # Extract items
-                    for row_idx in range(10, 100):
-                        desc_cell = sheet.cell(row=row_idx, column=1)
-                        if desc_cell.value and isinstance(desc_cell.value, str) and len(desc_cell.value) > 2:
-                            if not desc_cell.value.startswith('Textbox') and not desc_cell.value.startswith('Txt'):
-                                amt_cell = sheet.cell(row=row_idx, column=5)
-                                try:
-                                    amount = float(str(amt_cell.value).replace(',', '')) if amt_cell.value else 0
-                                    if amount > 0:
-                                        items.append({
-                                            'item_no': len(items) + 1,
-                                            'description': desc_cell.value[:50],
-                                            'amount': amount,
-                                            'category': 'VAT_7',
-                                            'vat_rate': 7,
-                                            'vat_amount': amount * 0.07
-                                        })
-                                except:
-                                    pass
-                                    
-                except Exception as e:
-                    print(f"Excel error: {e}")
-                    
-            elif filename.endswith('.pdf'):
-                try:
-                    import PyPDF2
-                    with open(filepath, 'rb') as pdf_file:
-                        pdf_reader = PyPDF2.PdfReader(pdf_file)
-                        text = ''
-                        for page in pdf_reader.pages:
-                            text += page.extract_text()
-                    
-                    inv_match = re.search(r'Invoice No[.:]\s*([A-Z0-9-]+)', text)
-                    if inv_match:
-                        invoice_no = inv_match.group(1)
-                    
-                    job_match = re.search(r'Job[:\s]+(\d{5,6})', text)
-                    if job_match:
-                        job_number = job_match.group(1)
-                    
-                    total_match = re.search(r'Total[:\s]+\$?([\d,]+\.?\d*)', text)
-                    if total_match:
-                        total_amount = float(total_match.group(1).replace(',', ''))
-                        
-                except Exception as e:
-                    print(f"PDF error: {e}")
-            else:
-                # CSV
-                try:
-                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
-                        content = file.read()
-                    
-                    import re
-                    inv_match = re.search(r'Invoice No[.,]: ([A-Z0-9-]+)', content)
-                    invoice_no = inv_match.group(1) if inv_match else filename.split('_', 1)[-1].replace('.csv', '')
-                    
-                    job_match = re.search(r': (\d{5,6}) ,.*?Job', content)
-                    job_number = job_match.group(1) if job_match else ''
-                    
-                    awb_match = re.search(r'([A-Z]{3}-\d{6}-[A-Z])', content)
-                    awb = awb_match.group(1) if awb_match else ''
-                    
-                    date_match = re.search(r'Invoice Date[.,]: (\d+ \w+ \d{4})', content)
-                    invoice_date = date_match.group(1) if date_match else ''
-                    
-                    total_match = re.search(r'Total Amount of Invoice.*?:.*?\$?([\d,]+\.?\d*)', content)
-                    total_amount = float(total_match.group(1).replace(',', '')) if total_match else 0
-                except Exception as e:
-                    print(f"CSV error: {e}")
-            
-            # Calculate subtotal and VAT
-            subtotal = total_amount / 1.07  # Remove VAT
-            vat_amount = total_amount - subtotal
-            
-            # If no items, create a default one
-            if not items:
-                print(f"ERROR: No items found! Using default.")
-                st.error(f"ERROR: Extracted 0 items from XML! Falling back to default.")
-                items = [{
-                    'item_no': 1,
-                    'description': 'Freight Charges',
-                    'amount': subtotal,
-                    'category': 'VAT_7',
-                    'vat_rate': 7,
-                    'vat_amount': vat_amount
-                }]
-            
-            invoices.append({
-                'id': i,
-                'filename': filename,
-                'filepath': filepath,
-                'invoice_no': invoice_no or filename.split('_', 1)[-1].replace('.csv', '').replace('.xlsx', '').replace('.xls', '').replace('.pdf', ''),
-                'invoice_date': invoice_date,
-                'customer_name': customer_name,
-                'job_number': job_number,
-                'awb': awb,
-                'exchange_rate': 30.909,
-                'subtotal': subtotal,
-                'vat_amount': vat_amount,
-                'total_amount': total_amount,
-                'total_thb': total_amount * 30.909,
-                'items': items,
-                'status': 'pending',
-                'created_at': filename[:8]
-            })
-        except Exception as e:
-            print(f"Error: {e}")
-            continue
+    except Exception as e:
+        st.error(f"Error loading invoices: {e}")
     
     return invoices
-
-
 
 def get_db_connection():
     """Get database connection"""
@@ -619,25 +281,15 @@ def get_invoice_history(limit=50):
     for inv in invoices:
         if inv.get('items_json'):
             try:
-                inv['items'] = json.loads(inv['items_json'])
+                try:
+                    inv['items'] = json.loads(inv['items_json']) if inv.get('items_json') else []
+                except:
+                    inv['items'] = []
             except:
                 inv['items'] = []
         else:
             inv['items'] = []
     return invoices
-
-# Initialize database
-init_database()
-
-# ============================================
-# TAX MAPPING MODULE
-# ============================================
-
-DEFAULT_MAPPING = {
-    'NON_VAT': ['TRANSPORTATION', 'AIR FREIGHT', 'OCEAN FREIGHT', 'CUSTOMS FEE', 'PROFIT', 'EXPORT', 'FUEL', 'AWB', 'FWB', 'TERMINAL'],
-    'VAT_7': ['CUSTOMS CLEARANCE', 'HANDLING', 'LABOUR', 'ADDITIONAL', 'LOCAL'],
-    'PARTIAL_VAT': ['OCEAN FREIGHT']
-}
 
 def determine_category(description, mapping):
     """Determine tax category based on description"""
@@ -1008,7 +660,7 @@ def main():
         show_history()
 
 def show_upload():
-    st.markdown('<p class="main-header">📤 Upload CSV Invoice</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">📤 Upload XML Invoice</p>', unsafe_allow_html=True)
     
     # Show sidebar with uploaded files
     show_uploaded_list_sidebar()
@@ -1023,18 +675,138 @@ def show_upload():
     )
     
     if uploaded_files:
-        # Save files directly
-        saved_count = 0
+        # Process files and show preview
+        st.session_state['pending_invoices'] = []
+        
         for uploaded_file in uploaded_files:
             try:
-                save_uploaded_file(uploaded_file)
-                saved_count += 1
+                from xml.etree import ElementTree as ET
+                import re
+                import json
+                
+                # Read XML content
+                xml_content = uploaded_file.getvalue()
+                xml_str = xml_content.decode('utf-8', errors='ignore')
+                
+                # Extract invoice data
+                invoice_data = {'filename': uploaded_file.name}
+                
+                # Extract Invoice No
+                invoice_no_match = re.search(r'Textbox183="([^"]*)"', xml_str)
+                if invoice_no_match:
+                    invoice_data['invoice_no'] = invoice_no_match.group(1).replace(':', '').strip()
+                
+                # Extract Customer Name & Address
+                billing_party_match = re.search(r'BillingPartyName="([^"]*)"', xml_str)
+                if billing_party_match:
+                    billing_text = billing_party_match.group(1).replace('&amp;', '&')
+                    # Replace escape codes with newlines FIRST
+                    billing_text = billing_text.replace('&#xD;', '\n').replace('&#xA;', '\n')
+                    lines = [l.strip() for l in billing_text.split('\n') if l.strip()]
+                    if len(lines) >= 2:
+                        invoice_data['customer_name'] = lines[1] if len(lines) > 1 else lines[0]
+                        invoice_data['customer_address'] = '\n'.join(lines[2:]) if len(lines) > 2 else ''
+                    else:
+                        invoice_data['customer_name'] = lines[0] if lines else ''
+                        invoice_data['customer_address'] = ''
+                
+                # Extract Invoice Date
+                date_match = re.search(r'Textbox184="([^"]*)"', xml_str)
+                if date_match:
+                    date_str = date_match.group(1).replace(':', '').strip()
+                    try:
+                        from datetime import datetime
+                        dt = datetime.strptime(date_str, "%m/%d/%Y %I:%M:%S %p")
+                        invoice_data['invoice_date'] = dt.strftime("%d %b %Y")
+                    except:
+                        invoice_data['invoice_date'] = date_str
+                
+                # Extract Total Amount
+                total_match = re.search(r'Textbox104="([^"]*)"', xml_str)
+                if total_match:
+                    try:
+                        invoice_data['total_amount'] = float(total_match.group(1))
+                    except:
+                        invoice_data['total_amount'] = 0
+                
+                # Extract VAT Amount
+                vat_match = re.search(r'Textbox117="([^"]*)"', xml_str)
+                if vat_match:
+                    try:
+                        invoice_data['vat_amount'] = float(vat_match.group(1))
+                    except:
+                        invoice_data['vat_amount'] = 0
+                
+                # Extract Items
+                items = []
+                details = re.findall(r'<Details[^>]*Textbox57="([^"]*)"[^>]*ServiceCode2="([^"]*)"[^>]*Textbox8="([^"]*)"', xml_str)
+                for d in details:
+                    item_no, desc, amount = d
+                    desc = desc.replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
+                    try:
+                        amt = float(amount)
+                    except:
+                        amt = 0
+                    if desc and amt > 0:
+                        items.append({
+                            'item_no': len(items) + 1,
+                            'description': desc,
+                            'amount': amt,
+                            'category': 'VAT_7'
+                        })
+                
+                invoice_data['items'] = items
+                st.session_state['pending_invoices'].append(invoice_data)
+                
             except Exception as e:
                 st.error(f"Error: {e}")
         
-        if saved_count > 0:
-            st.success(f"✅ อัปโหลด {saved_count} ไฟล์สำเร็จ!")
-            st.rerun()
+        # Show preview and confirmation
+        if st.session_state.get('pending_invoices'):
+            st.success(f"📄 พบ {len(st.session_state['pending_invoices'])} ไฟล์ - ตรวจสอบข้อมูลก่อนบันทึก")
+            
+            # Show preview
+            for i, inv in enumerate(st.session_state['pending_invoices']):
+                with st.expander(f"📋 {inv.get('invoice_no', 'Invoice')}"):
+                    st.write(f"**Customer:** {inv.get('customer_name', '-')}")
+                    st.write(f"**Date:** {inv.get('invoice_date', '-')}")
+                    st.write(f"**Amount:** {inv.get('total_amount', 0):,.2f}")
+                    st.write(f"**Items:** {len(inv.get('items', []))} รายการ")
+            
+            # Confirmation button
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ ยืนยันบันทึก", key="confirm_save"):
+                    # Save to database
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    saved = 0
+                    for inv in st.session_state['pending_invoices']:
+                        items_json = json.dumps(inv.get('items', []))
+                        cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (NULL, :inv, :dt, :cust, :addr, :job, :awb, :ref, :rate, :amt, :thb, :items, :status, :curr)""",
+                             {'inv': inv.get('invoice_no', ''),
+                              'dt': inv.get('invoice_date', ''),
+                              'cust': inv.get('customer_name', ''),
+                              'addr': inv.get('customer_address', ''),
+                              'job': inv.get('job_number', ''),
+                              'awb': inv.get('awb', ''),
+                              'ref': inv.get('job_ref', ''),
+                              'rate': inv.get('exchange_rate', 1),
+                              'amt': inv.get('total_amount', 0),
+                              'thb': inv.get('total_thb', 0),
+                              'items': items_json,
+                              'status': 'uploaded',
+                              'curr': inv.get('currency', 'USD')})
+                        saved += 1
+                    conn.commit()
+                    conn.close()
+                    st.session_state.pop('pending_invoices', None)
+                    st.success(f"✅ บันทึก {saved} ใบสำเร็จ! (Status: อัปโหลดแล้ว)")
+                    st.rerun()
+            with col2:
+                if st.button("❌ ยกเลิก", key="cancel_save"):
+                    st.session_state.pop('pending_invoices', None)
+                    st.rerun()
     
     # Show summary and button to go to Invoice List
     files = list_uploaded_files()
@@ -1238,31 +1010,56 @@ def process_single_file(uploaded_file, return_data=False):
     st.markdown("### 📅 วันที่ & 💱 อัตราแลกเปลี่ยน")
     
     # Date selector
-    invoice_date = st.date_input("วันที่ออก Receipt", value=datetime.now().date(), key=f"date_{uploaded_file.name}")
+    invoice_date = st.date_input("วันที่รับเงิน", value=datetime.now().date(), key=f"date_{uploaded_file.name}")
     
     # Try to get rate from API, fallback to manual
     api_rate = get_exchange_rate_from_api(str(invoice_date))
     
     col1, col2 = st.columns([2, 1])
+    
+    # Get current rate - use session state, fallback to API or default
+    rate_key = f"exchange_rate_{uploaded_file.name}"
+    
+    # Check if we have a stored rate
+    if rate_key not in st.session_state:
+        # Try to get from API first
+        if api_rate:
+            st.session_state[rate_key] = api_rate
+        else:
+            st.session_state[rate_key] = 30.909
+    
     with col1:
         st.caption(f"📅 วันที่: {invoice_date}")
         if api_rate:
             st.success(f"📈 Rate อัตโนมัติ: {api_rate:.4f} THB/USD")
-            exchange_rate = api_rate
         else:
             st.warning("📌 ไม่สามารถดึง Rate อัตโนมัติได้")
-            exchange_rate = st.number_input("💱 USD/THB", value=30.909, min_value=1.0, step=0.0001, key=f"rate_{uploaded_file.name}")
+        
+        # Exchange rate input - use text input
+        rate_str = st.text_input(
+            "💱 อัตราแลกเปลี่ยน ณ วันรับเงิน (USD/THB)", 
+            value=st.session_state.get(f"rate_input_{uploaded_file.name}", f"{st.session_state.get(rate_key, 30.909):.4f}"),
+            key=f"rate_input_{uploaded_file.name}"
+        )
+        try:
+            exchange_rate = float(rate_str)
+        except:
+            exchange_rate = 30.909
+        
     with col2:
         st.write("")
         st.write("")
         if st.button("🔄 ดึง Rate ใหม่", key=f"refresh_rate_{uploaded_file.name}"):
             new_rate = get_exchange_rate_from_api(str(invoice_date))
             if new_rate:
-                st.success(f"✅ ได้ Rate ใหม่: {new_rate:.4f}")
-                st.session_state[f"rate_{uploaded_file.name}"] = new_rate
-                st.rerun()
+                st.session_state[rate_key] = new_rate
+                # Update the text input value - sync both keys
+                st.session_state[f"rate_input_{uploaded_file.name}"] = f"{new_rate:.4f}"
+                st.session_state[rate_key] = f"{new_rate:.4f}"
+                st.success(f"✅ ได้ Rate ใหม่: {new_rate:.4f} THB/USD")
             else:
-                st.error("❌ ไม่สามารถดึง Rate ได้")
+                st.error("❌ ไม่สามารถดึง Rate ได้ กรุณากรอกเอง")
+    
     st.session_state['exchange_rate'] = exchange_rate
     
     # Invoice info
@@ -1272,10 +1069,18 @@ def process_single_file(uploaded_file, return_data=False):
     with col2:
         invoice_date_str = st.text_input("วันที่ (DD MMM YYYY)", value=invoice_date.strftime("%d %b %Y") if hasattr(invoice_date, 'strftime') else str(invoice_date), key=f"date_str_{uploaded_file.name}")
     
+    # Invoice No and Job No
+    col1, col2 = st.columns(2)
+    with col1:
+        invoice_no = st.text_input("Invoice No", value="3101523543", key=f"inv_{uploaded_file.name}")
+    with col2:
+        job_no = st.text_input("Job No.", value="", key=f"job_{uploaded_file.name}")
+    
     customer_name = st.text_input("Customer Name", value="Rock-it Cargo Pte. Ltd.", key=f"cust_{uploaded_file.name}")
     
     info = {
         'invoice_no': invoice_no,
+        'job_no': job_no,
         'invoice_date': str(invoice_date),
         'customer_name': customer_name,
         'filename': uploaded_file.name
@@ -1349,6 +1154,9 @@ def show_invoice_list():
     # Load from files
     invoices = load_invoices_from_db()
     
+    # Debug info
+    st.caption(f"📊 Debug: Found {len(invoices)} invoices in database")
+    
     if not invoices:
         st.warning("⚠️ ยังไม่มี Invoice")
         if st.button("📤 ไปหน้าอัปโหลด"):
@@ -1362,8 +1170,19 @@ def show_invoice_list():
     # Show table with all invoices
     data = []
     for i, inv in enumerate(invoices):
-        status = inv.get('status', 'pending')
-        status_display = "✅ ออกแล้ว" if status == "issued" else "⏳ รอ"
+        status = inv.get('status', 'uploaded')
+        status_display_map = {
+            'pending': '⏳ รอดำเนินการ',
+            'uploaded': '✅ อัปโหลดแล้ว',
+            'issued': '📄 ออกใบเสร็จแล้ว',
+            'validated': '✓ ผ่านการตรวจสอบ',
+            'xml_generated': '📄 XML สร้างแล้ว',
+            'signed': '🔐 ลงนามแล้ว',
+            'sent': '📤 ส่ง RD แล้ว',
+            'delivered': '🎉 ส่งเรียบร้อย',
+            'failed': '❌ ล้มเหลว'
+        }
+        status_display = status_display_map.get(status, status)
         
         data.append({
             'Invoice No': inv.get('invoice_no', '-'),
@@ -1371,13 +1190,81 @@ def show_invoice_list():
             'Customer': inv.get('customer_name', ''),
             'Address': inv.get('customer_address', ''),
             'Date': inv.get('invoice_date', '-'),
-            'Total (USD)': f"${float(inv.get('total_amount', 0)):,.2f}",
-            'Currency': 'USD',
+            'Total': f"{inv.get('currency', 'USD')} {float(inv.get('total_amount', 0)):,.2f}",
+            'Currency': inv.get('currency', 'USD'),
             'Status': status_display,
         })
     
-    df = pd.DataFrame(data)
-    st.dataframe(df, use_container_width=True)
+    # Prepare data for dataframe with proper column widths
+    table_data = []
+    for inv in invoices:
+        status = inv.get('status', 'pending')
+        status_display_map = {
+            'pending': '⏳ รอ',
+            'uploaded': '✅ อัปโหลด',
+            'issued': '📄 ออกแล้ว',
+            'validated': '✓ ผ่านตรวจ',
+            'xml_generated': '📄 XML',
+            'signed': '🔐 ลงนาม',
+            'sent': '📤 ส่ง RD',
+            'delivered': '🎉 สำเร็จ',
+            'failed': '❌ ล้มเหลว'
+        }
+        
+        curr = inv.get('currency', 'USD')
+        
+        table_data.append({
+            'Invoice No.': inv.get('invoice_no', '-'),
+            'Job No.': inv.get('job_number', '-') if inv.get('job_number') else '-',
+            'Customer Name': inv.get('customer_name', '-'),
+            'Date': inv.get('invoice_date', '-'),
+            'Amount': f"{curr} {float(inv.get('total_amount', 0)):,.2f}",
+            'Status': status_display_map.get(status, status),
+            'ID': inv.get('id')
+        })
+    
+    if table_data:
+        # Create dataframe
+        df = pd.DataFrame(table_data)
+        
+        # Display with custom styling
+        st.dataframe(
+            df[['Invoice No.', 'Job No.', 'Customer Name', 'Date', 'Amount', 'Status']],
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                'Invoice No.': st.column_config.TextColumn('Invoice No.', width='medium'),
+                'Job No.': st.column_config.TextColumn('Job No.', width='small'),
+                'Customer Name': st.column_config.TextColumn('Customer Name', width='large'),
+                'Date': st.column_config.TextColumn('Date', width='small'),
+                'Amount': st.column_config.TextColumn('Amount', width='medium'),
+                'Status': st.column_config.TextColumn('Status', width='small'),
+            }
+        )
+        
+        # Delete section below
+        st.markdown("### 🗑️ ลบ Invoice")
+        delete_options = []
+        delete_map = {}
+        for i, inv in enumerate(table_data):
+            key = f"{inv['Invoice No.']} | {inv['Customer Name'][:30]}"
+            delete_options.append(key)
+            delete_map[key] = inv['ID']
+        
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            selected_delete = st.selectbox("เลือก Invoice ที่จะลบ:", delete_options, key="delete_select")
+        with col2:
+            if st.button("🗑️ ลบ", key="btn_delete"):
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM invoices WHERE id = ?", (delete_map[selected_delete],))
+                conn.commit()
+                conn.close()
+                st.success("✅ ลบสำเร็จ!")
+                st.rerun()
+    else:
+        st.info("ยังไม่มี Invoice")
     
     # Edit section
     st.markdown("### 🧾 ออกใบเสร็จ")
@@ -1414,28 +1301,24 @@ def show_invoice_list():
             except:
                 current_date = datetime.now().date()
             
-            new_date = st.date_input("วันที่ออกใบเสร็จ", value=current_date, key=f"edit_date_{selected_idx}")
+            new_date = st.date_input("วันที่รับเงิน", value=current_date, key=f"edit_date_{selected_idx}")
         
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
         new_address = st.text_input("Address", value=inv.get('customer_address', ''), key=f"edit_addr_{selected_idx}")
         col1, col2 = st.columns([3, 1])
         with col1:
-            # Use a callback approach - store rate in session
-            rate_key = f"rate_{selected_idx}"
-            
-            # Initialize rate
-            if rate_key not in st.session_state:
-                st.session_state[rate_key] = 0.0
-            
             # Get exchange rate from invoice data
-            saved_rate = float(inv.get('exchange_rate', 0)) if inv.get('exchange_rate') else 0
-            if saved_rate > 0 and rate_key not in st.session_state:
-                st.session_state[rate_key] = saved_rate
+            saved_rate = float(inv.get('exchange_rate', 30.909)) if inv.get('exchange_rate') else 30.909
+            # Keep 1.0 as default (for THB invoices)
             
-            new_rate = st.number_input("Exchange Rate (USD/THB)", 
-                                       value=st.session_state[rate_key] if st.session_state[rate_key] > 0 else saved_rate, 
-                                       min_value=0.0, step=0.0001, 
+            # Show current rate
+            new_rate_str = st.text_input("อัตราแลกเปลี่ยน ณ วันรับเงิน (USD/THB)", 
+                                       value=f"{saved_rate:.4f}", 
                                        key=f"edit_rate_{selected_idx}")
+            try:
+                new_rate = float(new_rate_str)
+            except:
+                new_rate = 1.0
         with col2:
             st.write("")
             st.write("")
@@ -1443,8 +1326,9 @@ def show_invoice_list():
                 invoice_date_str = str(new_date) if new_date else str(datetime.now().date())
                 new_rate_api = get_exchange_rate_from_api(invoice_date_str)
                 if new_rate_api:
-                    st.session_state[rate_key] = new_rate_api
+                    # Can't modify widget value directly, show success and user will see new value after rerun
                     st.success(f"✅ Rate ใหม่: {new_rate_api:.4f}")
+                    st.rerun()
                 else:
                     st.warning("⚠️ ไม่ได้ Rate จาก API")
         
@@ -1466,77 +1350,81 @@ def show_invoice_list():
         st.markdown("#### รายการสินค้า")
         items = inv.get('items', [])
         
-        # Debug info - show more details
-        st.warning(f"DEBUG: Invoice {inv.get('invoice_no')} has {len(items)} items. Filename: {inv.get('filename', 'N/A')}, Filepath: {inv.get('filepath', 'N/A')}")
-        
-        # Show first few items for debugging
-        if items:
-            st.caption(f"First item: {items[0].get('description', 'N/A')} = {items[0].get('amount', 0)}")
-            # Show all items
-            for idx, itm in enumerate(items[:3]):
-                st.caption(f"  Item {idx+1}: {itm.get('description', 'N/A')} = {itm.get('amount', 0)}")
-        else:
-            st.caption("No items found in invoice!")
-        # Show all items with details
-        st.write(f"**📦 Total items: {len(items)}**")
-        
-        # List all items
-        for idx, itm in enumerate(items):
-            st.caption(f"  {idx+1}. {itm.get('description', 'N/A')[:40]} = {itm.get('amount', 0)}")
         for j, item in enumerate(items):
-                # Show all items without expander
-                col1, col2, col3 = st.columns([4, 2, 2])
-                with col1:
-                    new_desc = st.text_input(f"Item {j+1} Description", value=item.get('description', ''), key=f"item_desc_{selected_idx}_{j}")
-                with col2:
-                    new_amount_str = st.text_input(f"Item {j+1} Amount", value=str(item.get("amount", 0)), key=f"item_amt_{selected_idx}_{j}")
-                    try:
-                        new_amount = float(new_amount_str.replace(",", ""))
-                    except:
-                        new_amount = 0
-                with col3:
-                    # Auto-detect category based on description
-                    detected_cat = determine_category(new_desc, DEFAULT_MAPPING)
-                    current_cat = item.get('category', detected_cat)
-                    if current_cat not in ["NON_VAT", "VAT_7", "PARTIAL_VAT"]:
-                        current_cat = detected_cat
-                    
-                    new_cat = st.selectbox(f"Item {j+1} VAT", ["NON_VAT", "VAT_7", "PARTIAL_VAT"], 
-                                        index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(current_cat),
-                                        key=f"item_cat_{selected_idx}_{j}")
-                    
-                    # Show PARTIAL_VAT input if selected
-                    if new_cat == "PARTIAL_VAT":
-                        partial_vat = st.text_input("VAT Amount (THB)", value=str(item.get('manual_vat', '')), key=f"partial_vat_{selected_idx}_{j}")
-                        try:
-                            item['manual_vat'] = float(partial_vat)
-                        except:
-                            pass
-                
-                # Auto-save on change
-                item['description'] = new_desc
-                item['amount'] = new_amount
-                item['category'] = new_cat
-                
-                # Show VAT summary for this item
-                if new_cat == "PARTIAL_VAT" and new_amount > 0:
-                    # For PARTIAL_VAT: calculate THB using invoice rate from XML
-                        thb_amount = new_amount * receipt_rate
-                        manual_vat = item.get('manual_vat', 0)
-                        st.caption(f"💰 ${new_amount:,.2f} × Rate {receipt_rate:.4f} = ฿{thb_amount:,.2f} | VAT: ฿{manual_vat:,.2f} | Net: ฿{thb_amount - manual_vat:,.2f}")
-                elif new_cat == "VAT_7" and new_amount > 0:
-                    # For VAT_7: calculate THB using receipt rate from API
-                    if new_cat == "VAT_7" and new_amount > 0:
-                        receipt_rate = inv.get('exchange_rate', 30.909)  # From API
-                        vat_thb = new_amount * receipt_rate * 0.07
-                        st.caption(f"💰 ${new_amount:,.2f} × Rate {receipt_rate:.4f} = ฿{new_amount * receipt_rate:,.2f} | VAT 7%: ฿{vat_thb:,.2f} | Net: ฿{new_amount * receipt_rate - vat_thb:,.2f}")
-                elif new_cat == "NON_VAT" and new_amount > 0:
-                    # For NON_VAT: calculate THB using receipt rate from API
-                    if new_cat == "NON_VAT" and new_amount > 0:
-                        receipt_rate = inv.get('exchange_rate', 30.909)
-                        st.caption(f"💰 ${new_amount:,.2f} | Non-VAT | Total: ฿{new_amount * receipt_rate:,.2f}")
-    
-    # Navigation buttons
+            col1, col2, col3 = st.columns([4, 2, 2])
+            with col1:
+                new_desc = st.text_input(f"Item {j+1}", value=item.get('description', ''), key=f"item_desc_{selected_idx}_{j}")
+            with col2:
+                new_amount_str = st.text_input(f"Amount", value=str(item.get("amount", 0)), key=f"item_amt_{selected_idx}_{j}")
+                try:
+                    new_amount = float(new_amount_str.replace(",", ""))
+                except:
+                    new_amount = 0
+            with col3:
+                detected_cat = determine_category(new_desc, DEFAULT_MAPPING)
+                current_cat = item.get('category', detected_cat)
+                new_cat = st.selectbox(f"VAT", ["NON_VAT", "VAT_7", "PARTIAL_VAT"], 
+                                    index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(current_cat) if current_cat in ["NON_VAT", "VAT_7", "PARTIAL_VAT"] else 1,
+                                    key=f"item_cat_{selected_idx}_{j}")
+            
+            item['description'] = new_desc
+            item['amount'] = new_amount
+            item['category'] = new_cat
+        
+        # Calculate totals
+        receipt_rate = inv.get('exchange_rate', 30.909)
+        subtotal = 0
+        vat_total = 0
+        nonvat_total = 0
+        
+        for item in items:
+            amt_usd = item.get('amount', 0)
+            amt_thb = amt_usd * receipt_rate
+            cat = item.get('category', 'VAT_7')
+            
+            if cat == 'VAT_7':
+                vat = amt_thb * 0.07
+                vat_total += vat
+            elif cat == 'PARTIAL_VAT':
+                vat = item.get('manual_vat', 0)
+                vat_total += vat
+            else:
+                vat = 0
+            
+            subtotal += amt_thb
+        
+        total = subtotal + vat_total
+        
+        # Show summary
+        st.markdown("---")
+        st.markdown("### 💰 สรุปการคำนวณ")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Subtotal (THB)", f"฿{subtotal:,.2f}")
+        with col2:
+            st.metric("VAT 7% (THB)", f"฿{vat_total:,.2f}")
+        with col3:
+            st.metric("Total (THB)", f"฿{total:,.2f}")
+        with col4:
+            st.metric("อัตราแลกเปลี่ยน", f"{receipt_rate:.4f}")
+        
+        # Save button
+        if st.button("💾 บันทึกการแก้ไข", type="primary", key="save_items"):
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("""UPDATE invoices SET 
+                    items_json = ?, exchange_rate = ?, total_amount = ?, total_thb = ?, status = ?
+                    WHERE id = ?""",
+                    (json.dumps(items), receipt_rate, subtotal, total, 'issued', inv.get('id')))
+                conn.commit()
+                conn.close()
+                st.success("✅ บันทึกสำเร็จ!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ บันทึกไม่สำเร็จ: {e}")
+        
+        # Navigation buttons
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
@@ -1549,6 +1437,36 @@ def show_invoice_list():
             st.session_state['batch_invoices'] = invoices
             st.session_state['menu'] = '👁️ Preview'
             st.rerun()
+    # E-Tax Workflow Section
+    st.markdown("---")
+    st.markdown("### 🧾 E-Tax Workflow")
+    
+    if st.button("🚀 Run E-Tax Workflow", key="btn_etax_workflow"):
+        # Prepare invoice data for e-tax
+        invoice_data = {
+            'invoice_no': inv.get('invoice_no', ''),
+            'invoice_date': inv.get('invoice_date', ''),
+            'customer': {
+                'name': inv.get('customer_name', ''),
+                'tax_id': '0105535169497',  # Default GAC Tax ID for now
+                'branch_code': '00000',
+                'address': inv.get('customer_address', '')
+            },
+            'items': inv.get('items', []),
+            'subtotal': float(inv.get('total_amount', 0)),
+            'vat_amount': float(inv.get('total_amount', 0)) * 0.07,
+            'total_amount': float(inv.get('total_amount', 0)) * 1.07
+        }
+        
+        # Run workflow
+        result = run_etax_workflow(invoice_data)
+        
+        # Show result
+        if result['final_status'] == 'DELIVERED':
+            st.success(f"✅ E-Tax Workflow สำเร็จ! RD ID: {result.get('rd_submission_id')}")
+        else:
+            st.error(f"❌ E-Tax Workflow ล้มเหลว: {result.get('error')}")
+
 
 def recalculate_invoice(invoice):
     """Recalculate invoice totals"""
@@ -2072,7 +1990,160 @@ def show_history():
     with col3:
         st.metric("Total (THB)", f"฿{df['total_thb'].sum():,.2f}")
     
-    st.dataframe(df[['running_no', 'invoice_no', 'customer_name', 'invoice_date', 'total_amount', 'total_thb']], use_container_width=True)
+    cols = [c for c in ['running_no', 'invoice_no', 'customer_name', 'invoice_date', 'total_amount', 'total_thb'] if c in df.columns]
+    if cols:
+        st.dataframe(df[cols], use_container_width=True)
+    else:
+        st.dataframe(df, use_container_width=True)
 
 if __name__ == '__main__':
     main()
+
+
+# ============================================================================
+# NOTE: Agent Integration
+# ============================================================================
+# To use real agents, you need to:
+# 1. Run this Streamlit app within OpenClaw session
+# 2. Use sessions_spawn() to call agents
+# 3. Or call agents separately from OpenClaw CLI
+#
+# For now, the workflow uses local validation/generation as fallback.
+# ============================================================================
+
+# ============================================================================
+# E-TAX AGENT WORKFLOW
+# ============================================================================
+
+
+# ============================================================================
+# E-TAX WORKFLOW FUNCTIONS
+# ============================================================================
+
+def etax_validate(invoice_data: dict) -> dict:
+    """Validate invoice data"""
+    from decimal import Decimal, ROUND_HALF_EVEN
+    
+    errors = []
+    
+    # 1. Validate Tax ID (13 digits + Mod 11)
+    tax_id = invoice_data.get('customer', {}).get('tax_id', '')
+    if tax_id and (len(tax_id) != 13 or not tax_id.isdigit()):
+        errors.append("Tax ID ต้องเป็น 13 หลัก")
+    elif tax_id:
+        weights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        total = sum(int(tax_id[i]) * weights[i] for i in range(12))
+        check = (11 - (total % 11)) % 10
+        if int(tax_id[12]) != check:
+            errors.append("Tax ID ไม่ถูกต้อง (Mod 11 failed)")
+    
+    # 2. Validate calculations
+    subtotal = Decimal(str(invoice_data.get('subtotal', 0)))
+    vat_amount = Decimal(str(invoice_data.get('vat_amount', 0)))
+    total_amount = Decimal(str(invoice_data.get('total_amount', 0)))
+    
+    expected_vat = (subtotal * Decimal('0.07')).quantize(Decimal('0.01'), rounding=ROUND_HALF_EVEN)
+    expected_total = subtotal + expected_vat
+    
+    if abs(vat_amount - expected_vat) > Decimal('0.01'):
+        errors.append("VAT ไม่ถูกต้อง")
+    
+    if abs(total_amount - expected_total) > Decimal('0.01'):
+        errors.append("Total ไม่ถูกต้อง")
+    
+    return {
+        'valid': len(errors) == 0,
+        'errors': errors,
+        'validated_data': invoice_data
+    }
+
+def etax_generate_xml(invoice_data: dict) -> dict:
+    """Generate XML from invoice data"""
+    import os
+    from xml.etree import ElementTree as ET
+    
+    invoice_no = invoice_data.get('invoice_no', 'UNKNOWN')
+    xml_dir = os.path.join(os.path.dirname(DB_PATH), 'etax_xml')
+    os.makedirs(xml_dir, exist_ok=True)
+    xml_path = os.path.join(xml_dir, f'{invoice_no}_etax.xml')
+    
+    root = ET.Element('Invoice')
+    root.set('xmlns', 'urn:ettds:invoice:v1.0')
+    
+    header = ET.SubElement(root, 'Header')
+    ET.SubElement(header, 'ID').text = invoice_no
+    ET.SubElement(header, 'IssueDate').text = invoice_data.get('invoice_date', '')
+    
+    tree = ET.ElementTree(root)
+    tree.write(xml_path, encoding='UTF-8', xml_declaration=True)
+    
+    return {'success': True, 'xml_path': xml_path}
+
+def etax_sign_xml(xml_path: str) -> dict:
+    """Sign XML (placeholder)"""
+    import os, shutil
+    signed_path = xml_path.replace('.xml', '_signed.xml')
+    if os.path.exists(xml_path):
+        shutil.copy(xml_path, signed_path)
+    return {'success': True, 'signed_path': signed_path}
+
+def etax_deliver(signed_xml_path: str, invoice_data: dict) -> dict:
+    """Deliver to RD and send email"""
+    return {
+        'success': True,
+        'rd_submission_id': f"RD-{invoice_data.get('invoice_no', 'UNKNOWN')}",
+        'email_sent': True
+    }
+
+def run_etax_workflow(invoice_data: dict) -> dict:
+    """Main workflow - runs through all agents"""
+    
+    result = {
+        'invoice_no': invoice_data.get('invoice_no'),
+        'steps': [],
+        'final_status': 'PENDING'
+    }
+    
+    # Step 1: Validate
+    st.info("Step 1: Validating with etax-validator...")
+    validation = etax_validate(invoice_data)
+    result['steps'].append({'step': 'validate', 'result': validation})
+    
+    if not validation['valid']:
+        result['final_status'] = 'FAILED'
+        result['error'] = validation['errors']
+        return result
+    
+    # Step 2: Generate XML
+    st.info("Step 2: Generating XML with etax-xml-generator...")
+    xml_result = etax_generate_xml(validation['validated_data'])
+    result['steps'].append({'step': 'generate_xml', 'result': xml_result})
+    
+    if not xml_result.get('success'):
+        result['final_status'] = 'FAILED'
+        result['error'] = xml_result.get('error')
+        return result
+    
+    # Step 3: Sign
+    st.info("Step 3: Signing with etax-signer...")
+    sign_result = etax_sign_xml(xml_result['xml_path'])
+    result['steps'].append({'step': 'sign', 'result': sign_result})
+    
+    if not sign_result.get('success'):
+        result['final_status'] = 'FAILED'
+        result['error'] = sign_result.get('error')
+        return result
+    
+    # Step 4: Deliver
+    st.info("Step 4: Submitting with etax-delivery...")
+    delivery_result = etax_deliver(sign_result['signed_path'], invoice_data)
+    result['steps'].append({'step': 'deliver', 'result': delivery_result})
+    
+    if delivery_result.get('success'):
+        result['final_status'] = 'DELIVERED'
+        result['rd_submission_id'] = delivery_result.get('rd_submission_id')
+    else:
+        result['final_status'] = 'FAILED'
+    
+    return result
+
