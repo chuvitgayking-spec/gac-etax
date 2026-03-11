@@ -195,7 +195,7 @@ def load_invoices_from_db():
                                 dt = datetime.strptime(date_part, "%m/%d/%Y")
                                 invoice_date = dt.strftime("%d %b %Y")
                             except:
-                                invoice_date = raw_date.split(" ")[0]
+                                invoice_date = raw_date.lstrip(': ').split(" ")[0]
                     
                     # Find BilledOnInvoice1 (Total USD)
                     match = re.search(r'BilledOnInvoice1="([^"]*)"', xml_str)
