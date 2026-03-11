@@ -1,0 +1,68 @@
+# ============================================================================
+# E-Tax Invoice System - Docker Compose
+# Production-ready configuration
+# ============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Streamlit App
+  # ---------------------------------------------------------------------------
+  etax-app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: gac-etax
+    ports:
+      - "8501:8501"
+    env_file:
+      - ../config/.env
+    volumes:
+      - etax-data:/data
+      - etax-logs:/logs
+    environment:
+      - DB_PATH=/data/invoices.db
+      - LOG_FILE=/logs/etax.log
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Optional: Nginx Reverse Proxy (for HTTPS)
+  # ---------------------------------------------------------------------------
+  # nginx:
+  #   image: nginx:latest
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - etax-app
+  #   restart: unless-stopped
+
+volumes:
+  etax-data:
+    driver: local
+  etax-logs:
+    driver: local
+
+# ============================================================================
+# USAGE
+# ============================================================================
+#
+# Development:
+#   docker-compose up -d
+#
+# Build:
+#   docker-compose build
+#
+# View logs:
+#   docker-compose logs -f
+#
+# Stop:
+#   docker-compose down
+#
+# ============================================================================
