@@ -841,10 +841,10 @@ def show_upload():
     show_uploaded_list_sidebar()
     
     # File uploader
-    st.markdown("### 📤 อัปโหลดไฟล์ CSV/Excel")
+    st.markdown("### 📤 อัปโหลดไฟล์ CSV/Excel/XML")
     uploaded_files = st.file_uploader(
         "เลือกไฟล์ (เลือกได้หลายไฟล์)", 
-        type=['csv', 'xlsx', 'xls', 'pdf'], 
+        type=['csv', 'xlsx', 'xls', 'pdf', 'xml'], 
         accept_multiple_files=True,
         key="file_uploader"
     )
