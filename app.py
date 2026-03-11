@@ -290,6 +290,10 @@ def load_invoices_from_db():
                     # Show in Streamlit UI for debugging
                     st.info(f"🔍 Found: {len(service_codes)} ServiceCode2, {len(amounts_61)} Textbox61")
                     
+                    # Show XML sample for debugging
+                    xml_sample = xml_str[:300] if xml_str else "EMPTY!"
+                    st.caption(f"XML sample: {xml_sample}")
+                    
                     # Build items from ServiceCode2 + Textbox61
                     for i in range(min(len(service_codes), len(amounts_61))):
                         try:
