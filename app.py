@@ -205,6 +205,15 @@ def load_invoices_from_db():
                         except:
                             pass
                     
+                    # Get exchange rate from XML
+                    match = re.search(r'Textbox186="([^"]*)"', xml_str)
+                    if match:
+                        rate_str = match.group(1).replace('USD / THB @ ', '').strip()
+                        try:
+                            exchange_rate = float(rate_str)
+                        except:
+                            pass
+                    
                     # Fallback: if still no invoice_no, try filename
                     if not invoice_no and filename:
                         # Try to extract from filename pattern like BKK3101523543
@@ -1325,9 +1334,23 @@ def show_invoice_list():
                     except:
                         new_amount = 0
                 with col3:
+                    # Auto-detect category based on description
+                    detected_cat = determine_category(new_desc, DEFAULT_MAPPING)
+                    current_cat = item.get('category', detected_cat)
+                    if current_cat not in ["NON_VAT", "VAT_7", "PARTIAL_VAT"]:
+                        current_cat = detected_cat
+                    
                     new_cat = st.selectbox(f"Item {j+1} VAT", ["NON_VAT", "VAT_7", "PARTIAL_VAT"], 
-                                        index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(item.get('category', 'VAT_7')),
+                                        index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(current_cat),
                                         key=f"item_cat_{selected_idx}_{j}")
+                    
+                    # Show PARTIAL_VAT input if selected
+                    if new_cat == "PARTIAL_VAT":
+                        partial_vat = st.text_input("VAT Amount (THB)", value=str(item.get('manual_vat', '')), key=f"partial_vat_{selected_idx}_{j}")
+                        try:
+                            item['manual_vat'] = float(partial_vat)
+                        except:
+                            pass
                 
                 # Auto-save on change
                 item['description'] = new_desc
