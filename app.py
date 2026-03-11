@@ -876,13 +876,16 @@ def parse_xml_invoice(content):
             # AWB
             if elem.get('Textbox65'):
                 invoice_data['awb'] = elem.get('Textbox65', '')
-            # Invoice Date - extract just the date part
+            # Invoice Date
             if elem.get('Textbox184'):
-                date_str = elem.get('Textbox184', '')
-                # Extract date only (before space)
-                invoice_data['invoice_date'] = date_str.split(' ')[0] if ' ' in date_str else date_str
-            # Exchange Rate - NOT from XML (use fresh rate for receipt)
-            # invoice_data['exchange_rate'] = 30.909  # Default, will be fetched fresh
+                invoice_data['invoice_date'] = elem.get('Textbox184', '')
+            # Exchange Rate
+            if elem.get('Textbox186'):
+                rate_str = elem.get('Textbox186', '').replace('USD / THB @ ', '').strip()
+                try:
+                    invoice_data['exchange_rate'] = float(rate_str)
+                except:
+                    pass
             # Total USD
             if elem.get('BilledOnInvoice1'):
                 try:
