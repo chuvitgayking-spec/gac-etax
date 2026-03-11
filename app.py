@@ -836,6 +836,102 @@ def show_uploaded_list_sidebar():
         st.sidebar.caption("ยังไม่มีไฟล์")
 
 
+
+def parse_xml_invoice(content):
+    """Parse XML invoice from GAC system"""
+    import xml.etree.ElementTree as ET
+    
+    try:
+        root = ET.fromstring(content)
+        
+        # Define namespace
+        ns = {'ns': 'FIN_SalesInvoiceBulkPrint'}
+        
+        # Find invoice data
+        invoice_data = {
+            'invoice_no': '',
+            'customer_name': '',
+            'job_number': '',
+            'awb': '',
+            'invoice_date': '',
+            'exchange_rate': 30.909,
+            'total_amount': 0,
+            'total_thb': 0,
+            'vat_amount': 0,
+            'items': []
+        }
+        
+        # Extract data from XML attributes
+        # Find Textbox elements
+        for elem in root.iter():
+            # Invoice No
+            if elem.get('Textbox183'):
+                invoice_data['invoice_no'] = elem.get('Textbox183', '')
+            # Customer
+            if elem.get('BillingPartyName'):
+                invoice_data['customer_name'] = elem.get('BillingPartyName', '').replace('Billing Party:', '').strip()
+            # Job No
+            if elem.get('Textbox59'):
+                invoice_data['job_number'] = elem.get('Textbox59', '')
+            # AWB
+            if elem.get('Textbox65'):
+                invoice_data['awb'] = elem.get('Textbox65', '')
+            # Invoice Date
+            if elem.get('Textbox184'):
+                invoice_data['invoice_date'] = elem.get('Textbox184', '')
+            # Exchange Rate
+            if elem.get('Textbox186'):
+                rate_str = elem.get('Textbox186', '').replace('USD / THB @ ', '').strip()
+                try:
+                    invoice_data['exchange_rate'] = float(rate_str)
+                except:
+                    pass
+            # Total USD
+            if elem.get('BilledOnInvoice1'):
+                try:
+                    invoice_data['total_amount'] = float(elem.get('BilledOnInvoice1', 0))
+                except:
+                    pass
+            # Total THB
+            if elem.get('Textbox104'):
+                try:
+                    invoice_data['total_thb'] = float(elem.get('Textbox104', 0))
+                except:
+                    pass
+            # VAT
+            if elem.get('Textbox117'):
+                try:
+                    invoice_data['vat_amount'] = float(elem.get('Textbox117', 0))
+                except:
+                    pass
+        
+        # Extract items from Details
+        item_no = 1
+        for elem in root.iter():
+            if elem.get('Textbox4'):  # Service code description
+                desc = elem.get('Textbox4', '')
+                amount = 0
+                try:
+                    amount = float(elem.get('Textbox8', 0))
+                except:
+                    pass
+                
+                if desc and amount > 0:
+                    invoice_data['items'].append({
+                        'item_no': item_no,
+                        'description': desc,
+                        'amount': amount,
+                        'vat_rate': '0',
+                        'vat_amount': 0
+                    })
+                    item_no += 1
+        
+        return invoice_data
+        
+    except Exception as e:
+        return {'error': str(e)}
+
+
 def process_single_file(uploaded_file, return_data=False):
     """Process a single file"""
     # Process in memory
