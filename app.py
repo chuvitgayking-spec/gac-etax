@@ -86,7 +86,7 @@ def save_invoice_to_db(invoice_data, status='pending'):
     else:
         items_json = json.dumps(items_list)
     
-    c.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status)
+    c.execute("""INSERT OR REPLACE INTO invoices (filename, invoice_no, invoice_date, customer_name, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (invoice_data.get('filename', ''),
          invoice_data.get('invoice_no', ''),
@@ -350,7 +350,7 @@ def save_invoice(invoice_data):
     cursor = conn.cursor()
     
     cursor.execute('''
-        INSERT INTO invoices (
+        INSERT OR REPLACE INTO invoices (
             invoice_no, running_no, customer_name, invoice_date,
             subtotal, vat_amount, total_amount, total_thb,
             exchange_rate, file_source
