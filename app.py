@@ -1,3 +1,4 @@
+from io import BytesIO
 # Invoice Database
 INVOICE_DB = "/tmp/invoice_records.db"
 
