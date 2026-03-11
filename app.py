@@ -214,16 +214,19 @@ def load_invoices_from_db():
                         else:
                             invoice_no = filename.replace('.xml', '').split('_')[-1]
 
-                    # Extract items from XML
+                    # Extract items from XML - improved
                     items = []
-                    for match in re.finditer(r'Textbox57="(\d+)"[^>]*ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)', xml_str):
-                        desc = match.group(2).replace('&amp;', '&')
+                    seen = set()
+                    
+                    for match in re.finditer(r'ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
+                        desc = match.group(1).replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
                         try:
-                            amount = float(match.group(3))
+                            amt = float(match.group(2))
                         except:
-                            amount = 0
-                        if desc and amount > 0:
-                            items.append({'item_no': len(items)+1, 'description': desc, 'amount': amount, 'vat_rate': '0', 'vat_amount': 0})
+                            amt = 0
+                        if desc and amt > 0 and desc not in seen:
+                            items.append({'item_no': len(items)+1, 'description': desc, 'amount': amt, 'vat_rate': '0', 'vat_amount': 0})
+                            seen.add(desc)
 
                     for match in re.finditer(r'Textbox4="([^"]*)"[^>]*Textbox8="([^"]*)', xml_str):
                         desc = match.group(1).replace('&amp;', '&')
