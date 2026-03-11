@@ -1247,7 +1247,8 @@ def show_invoice_list():
         data.append({
             'Invoice No': inv.get('invoice_no', '-'),
             'Job No': inv.get('job_number', '-'),
-            'Customer': inv.get('customer_name', '-'),
+            'Customer': inv.get('customer_name', '').split('|')[0].strip() if '|' in inv.get('customer_name', '') else inv.get('customer_name', ''),
+            'Address': inv.get('customer_name', '').split('|')[1].strip() if '|' in inv.get('customer_name', '') else '',
             'Date': inv.get('invoice_date', '-'),
             'Total (USD)': f"${float(inv.get('total_amount', 0)):,.2f}",
             'Currency': 'USD',
