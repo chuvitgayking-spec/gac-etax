@@ -86,12 +86,13 @@ def save_invoice_to_db(invoice_data, status='pending'):
     else:
         items_json = json.dumps(items_list)
     
-    c.execute("""INSERT OR REPLACE INTO invoices (filename, invoice_no, invoice_date, customer_name, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status)
+    c.execute("""INSERT OR REPLACE INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (invoice_data.get('filename', ''),
          invoice_data.get('invoice_no', ''),
          invoice_data.get('invoice_date', ''),
          invoice_data.get('customer_name', ''),
+         invoice_data.get('customer_address', ''),
          invoice_data.get('job_number', ''),
          invoice_data.get('awb', ''),
          invoice_data.get('job_ref', ''),
@@ -446,7 +447,7 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             invoice_no TEXT UNIQUE NOT NULL,
             running_no TEXT NOT NULL,
-            customer_name TEXT,
+            customer_name TEXT, customer_address TEXT,
             address TEXT,
             invoice_date TEXT,
             subtotal REAL,
@@ -495,7 +496,7 @@ def save_invoice(invoice_data):
     
     cursor.execute('''
         INSERT OR REPLACE INTO invoices (
-            invoice_no, running_no, customer_name, invoice_date,
+            invoice_no, running_no, customer_name, customer_address, invoice_date,
             subtotal, vat_amount, total_amount, total_thb,
             exchange_rate, file_source
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1011,9 +1012,12 @@ def parse_xml_invoice(content):
             # Invoice No
             if elem.get('Textbox183'):
                 invoice_data['invoice_no'] = elem.get('Textbox183', '')
-            # Customer
+            # Customer - split name (line 1) and address (lines 2-4)
             if elem.get('BillingPartyName'):
-                invoice_data['customer_name'] = elem.get('BillingPartyName', '').replace('Billing Party:', '').strip()
+                billing = elem.get('BillingPartyName', '').replace('Billing Party:', '').strip()
+                lines = billing.replace('&#xD;&#xA;', '\n').replace('&#xD;', '\n').replace('&#xA;', '\n').split('\n')
+                invoice_data['customer_name'] = lines[0].strip() if lines else ''
+                invoice_data['customer_address'] = '\n'.join([l.strip() for l in lines[1:] if l.strip()]) if len(lines) > 1 else ''
             # Job No
             if elem.get('Textbox188'):
                 invoice_data['job_number'] = elem.get('Textbox188', '')
@@ -1253,8 +1257,8 @@ def show_invoice_list():
         data.append({
             'Invoice No': inv.get('invoice_no', '-'),
             'Job No': inv.get('job_number', '-'),
-            'Customer': inv.get('customer_name', '').split('|')[0].strip() if '|' in inv.get('customer_name', '') else inv.get('customer_name', ''),
-            'Address': inv.get('customer_name', '').split('|')[1].strip() if '|' in inv.get('customer_name', '') else '',
+            'Customer': inv.get('customer_name', ''),
+            'Address': inv.get('customer_address', ''),
             'Date': inv.get('invoice_date', '-'),
             'Total (USD)': f"${float(inv.get('total_amount', 0)):,.2f}",
             'Currency': 'USD',
@@ -1268,7 +1272,7 @@ def show_invoice_list():
     st.markdown("### 🧾 ออกใบเสร็จ")
     
     # Select invoice to edit
-    options = [f"{inv.get('invoice_no', 'N/A')} | {inv.get('customer_name', 'Unknown')[:25]}" for i, inv in enumerate(invoices)]
+    options = [f"{inv.get('invoice_no', 'N/A')} | {inv.get('customer_name', 'Unknown')[:25]}" for inv in invoices]
     selected_idx = st.selectbox("เลือก Invoice ที่จะออกใบเสร็จ:", range(len(options)), format_func=lambda x: options[x])
     
     # Show selected invoice details
