@@ -575,7 +575,7 @@ def generate_pdf(invoice_data):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm
+    from reportlab.lib.units import mm, cm
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
     
     buffer = BytesIO()
