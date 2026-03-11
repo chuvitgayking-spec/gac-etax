@@ -1,6 +1,6 @@
 from io import BytesIO
 # Invoice Database
-INVOICE_DB = "/tmp/invoice_records.db"
+INVOICE_DB = "/Users/chuvit/.openclaw/workspace/gac_etax/data/invoice_records.db"
 
 import streamlit as st
 import pandas as pd
@@ -27,7 +27,7 @@ COMPANY_WEB = "www.gac.com/thailand"
 
 import os
 # Database path - works on both local and cloud
-DB_PATH = os.environ.get('DB_PATH', '/tmp/invoices.db')
+DB_PATH = os.environ.get('DB_PATH', '/Users/chuvit/.openclaw/workspace/gac_etax/data/invoices.db')
 UPLOAD_DIR = os.environ.get('UPLOAD_DIR', '/tmp/uploads')
 
 def list_uploaded_files():
