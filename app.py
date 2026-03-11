@@ -453,7 +453,8 @@ def load_invoices_from_db():
             
             # If no items, create a default one
             if not items:
-                print(f"ERROR: No items found for invoice {invoice_no}! Using default. XML length: {len(xml_str) if 'xml_str' in dir() else 0}")
+                print(f"ERROR: No items found! Using default.")
+                st.error(f"ERROR: Extracted 0 items from XML! Falling back to default.")
                 items = [{
                     'item_no': 1,
                     'description': 'Freight Charges',
