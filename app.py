@@ -1325,18 +1325,10 @@ def show_invoice_list():
                                             index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(item.get('category', 'VAT_7')),
                                             key=f"item_cat_{selected_idx}_{j}")
                     
-                    # Save item changes
-                    if st.button(f"💾 บันทึก Item {j+1}", key=f"save_item_{selected_idx}_{j}"):
-                        item['description'] = new_desc
-                        item['amount'] = new_amount
-                        item['category'] = new_cat
-                        item['vat_rate'] = 0 if new_cat == "NON_VAT" else 7
-                        item['vat_amount'] = Decimal(str(new_amount)) * Decimal('0.07') if new_cat == "VAT_7" else Decimal('0')
-                        
-                        # Recalculate
-                        recalculate_invoice(invoices[selected_idx])
-                        st.success("✅ บันทึกสำเร็จ!")
-                        st.rerun()
+                    # Auto-save on change
+                    item['description'] = new_desc
+                    item['amount'] = new_amount
+                    item['category'] = new_cat
     
     # Navigation buttons
     st.markdown("---")
