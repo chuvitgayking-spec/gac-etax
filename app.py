@@ -282,11 +282,14 @@ def load_invoices_from_db():
                     # Debug: Check if XML contains Details2
                     has_details2 = 'Details2' in xml_str
                     print(f"DEBUG: XML has Details2: {has_details2}")
+                    print(f"DEBUG: XML length = {len(xml_str)}")
                     
                     try:
                         # Find Details2 tags for items
                         details2_pattern = r'<Details2\s+[^>]*>'
                         details2_matches = re.findall(details2_pattern, xml_str)
+                        
+                        print(f"DEBUG: Found {len(details2_matches)} Details2 elements")
                         
                         for detail in details2_matches:
                             # Extract description (Textbox17)
