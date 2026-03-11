@@ -1284,6 +1284,7 @@ def show_invoice_list():
             new_date = st.date_input("วันที่ออกใบเสร็จ", value=current_date, key=f"edit_date_{selected_idx}")
         
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
+        new_address = st.text_input("Address", value=inv.get('address', ''), key=f"edit_addr_{selected_idx}")
         col1, col2 = st.columns([3, 1])
         with col1:
             # Use a callback approach - store rate in session
@@ -1314,6 +1315,7 @@ def show_invoice_list():
             invoices[selected_idx]['invoice_no'] = new_inv_no
             invoices[selected_idx]['invoice_date'] = new_date
             invoices[selected_idx]['customer_name'] = new_customer
+            invoices[selected_idx]['address'] = new_address
             invoices[selected_idx]['exchange_rate'] = new_rate
             
             # Recalculate totals
