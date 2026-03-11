@@ -1047,6 +1047,16 @@ def show_uploaded_list_sidebar():
         
         if len(files) > 10:
             st.sidebar.caption(f"... และอีก {len(files) - 10} ไฟล์")
+        
+        # Clear all button
+        if st.sidebar.button("🗑️ ลบทั้งหมด", key="clear_all"):
+            for f in files:
+                try:
+                    delete_uploaded_file(f['filename'])
+                except:
+                    pass
+            st.sidebar.success("✅ ลบไฟล์ทั้งหมดแล้ว!")
+            st.rerun()
     else:
         st.sidebar.caption("ยังไม่มีไฟล์")
 
