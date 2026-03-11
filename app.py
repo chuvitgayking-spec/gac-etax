@@ -162,7 +162,7 @@ def load_invoices_from_db():
                         raw_name = match.group(1).replace("Billing Party:", "").replace('&#13;', ' ').replace('&#10;', ' ').replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ')
                     # Get first line (name only, not address)
                     customer_name = raw_name.split('\n')[0].split('\r')[0].strip()
-                    address = raw_name.replace(customer_name, '').strip()[:80]
+                    address = raw_name.replace(customer_name, '').replace('Billing Party:', '').strip()[:80]
                     invoice_data['address'] = address  # First 4 words
                     
                     # Find Textbox188 (Job No)
