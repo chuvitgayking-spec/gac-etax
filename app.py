@@ -1360,11 +1360,9 @@ def show_invoice_list():
                 # Show VAT summary for this item
                 if new_cat == "PARTIAL_VAT" and new_amount > 0:
                     # For PARTIAL_VAT: calculate THB using invoice rate from XML
-                    if new_cat == "PARTIAL_VAT" and new_amount > 0:
-                        invoice_rate = inv.get('exchange_rate', 30.909)  # From XML
                         thb_amount = new_amount * invoice_rate
                         manual_vat = item.get('manual_vat', 0)
-                        st.caption(f"💰 ${new_amount:,.2f} × Rate {invoice_rate:.4f} = ฿{thb_amount:,.2f} | VAT: ฿{manual_vat:,.2f} | Net: ฿{thb_amount - manual_vat:,.2f}")
+                        st.caption(f"💰 ${new_amount:,.2f} × Rate {receipt_rate:.4f} = ฿{thb_amount:,.2f} | VAT: ฿{manual_vat:,.2f} | Net: ฿{thb_amount - manual_vat:,.2f}")
                 elif new_cat == "VAT_7" and new_amount > 0:
                     # For VAT_7: calculate THB using receipt rate from API
                     if new_cat == "VAT_7" and new_amount > 0:
