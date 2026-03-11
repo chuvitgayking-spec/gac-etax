@@ -1360,7 +1360,7 @@ def show_invoice_list():
                 # Show VAT summary for this item
                 if new_cat == "PARTIAL_VAT" and new_amount > 0:
                     # For PARTIAL_VAT: calculate THB using invoice rate from XML
-                        thb_amount = new_amount * invoice_rate
+                        thb_amount = new_amount * receipt_rate
                         manual_vat = item.get('manual_vat', 0)
                         st.caption(f"💰 ${new_amount:,.2f} × Rate {receipt_rate:.4f} = ฿{thb_amount:,.2f} | VAT: ฿{manual_vat:,.2f} | Net: ฿{thb_amount - manual_vat:,.2f}")
                 elif new_cat == "VAT_7" and new_amount > 0:
