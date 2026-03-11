@@ -46,13 +46,22 @@ import os
 # Database path - works on both local and cloud
 import platform
 import os
-# Use local path on Mac/Linux, cloud path on deployment
-if platform.system() == 'Darwin' or platform.system() == 'Linux':
-    DEFAULT_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'invoices.db')
-else:
+
+# Detect if running on Streamlit Cloud
+IS_CLOUD = os.environ.get('STREAMLIT_SHARED') is not None or os.path.exists('/mount/src')
+
+# Use cloud path on Streamlit Cloud, local path otherwise
+if IS_CLOUD or platform.system() != 'Darwin':
+    # Cloud deployment
     DEFAULT_DB = '/tmp/invoices.db'
+    DEFAULT_UPLOAD = '/tmp/uploads'
+else:
+    # Local Mac deployment
+    DEFAULT_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'invoices.db')
+    DEFAULT_UPLOAD = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'uploads')
+
 DB_PATH = os.environ.get('DB_PATH', DEFAULT_DB)
-UPLOAD_DIR = os.environ.get('UPLOAD_DIR', '/Users/chuvit/.openclaw/workspace/gac_etax/data/uploads')
+UPLOAD_DIR = os.environ.get('UPLOAD_DIR', DEFAULT_UPLOAD)
 
 def list_uploaded_files():
     """List all uploaded files"""
