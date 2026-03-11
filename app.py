@@ -287,6 +287,9 @@ def load_invoices_from_db():
                     
                     print(f"DEBUG: Found {len(service_codes)} ServiceCode2, {len(amounts_61)} Textbox61")
                     
+                    # Show in Streamlit UI for debugging
+                    st.info(f"🔍 Found: {len(service_codes)} ServiceCode2, {len(amounts_61)} Textbox61")
+                    
                     # Build items from ServiceCode2 + Textbox61
                     for i in range(min(len(service_codes), len(amounts_61))):
                         try:
@@ -1456,8 +1459,12 @@ def show_invoice_list():
                 st.caption(f"  Item {idx+1}: {itm.get('description', 'N/A')} = {itm.get('amount', 0)}")
         else:
             st.caption("No items found in invoice!")
-        # Show all items
-        st.write(f"**Total items: {len(items)}**")
+        # Show all items with details
+        st.write(f"**📦 Total items: {len(items)}**")
+        
+        # List all items
+        for idx, itm in enumerate(items):
+            st.caption(f"  {idx+1}. {itm.get('description', 'N/A')[:40]} = {itm.get('amount', 0)}")
         for j, item in enumerate(items):
                 # Show all items without expander
                 col1, col2, col3 = st.columns([4, 2, 2])
