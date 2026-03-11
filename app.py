@@ -234,6 +234,24 @@ def load_invoices_from_db():
                         desc = match.group(1).replace('&amp;', '&').replace('&#xD;', '\n').replace('&#xA;', '\n').replace('&#13;', '\n').replace('&#10;', '\n').strip()
                         try:
                             amt = float(match.group(2))
+                            # Check for VAT info
+                            vat_rate = "0"
+                            vat_amount = 0
+                            for vat_match in re.finditer(r'Textbox17="([^"]*)"[^>]*Textbox20="([^"]*)', xml_str):
+                                if vat_match.group(1).strip() == desc.strip():
+                                    try:
+                                        vat_amount = float(vat_match.group(2))
+                                        if vat_amount > 0:
+                                            vat_rate = "7"
+                                    except:
+                                        pass
+                            items.append({
+                                'item_no': len(items)+1,
+                                'description': desc,
+                                'amount': amt,
+                                'vat_rate': vat_rate,
+                                'vat_amount': vat_amount
+                            })
                         except:
                             amt = 0
                         if desc and amt > 0 and desc not in seen and len(items) < 12 :
