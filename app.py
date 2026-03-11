@@ -224,7 +224,7 @@ def load_invoices_from_db():
                             amt = float(match.group(2))
                         except:
                             amt = 0
-                        if desc and amt > 0 and desc not in seen:
+                        if desc and amt > 0 and desc not in seen and len(items) < 12:
                             items.append({'item_no': len(items)+1, 'description': desc, 'amount': amt, 'vat_rate': '0', 'vat_amount': 0})
                             seen.add(desc)
 
