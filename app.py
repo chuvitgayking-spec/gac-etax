@@ -1404,6 +1404,11 @@ def show_invoice_list():
         # Show first few items for debugging
         if items:
             st.caption(f"First item: {items[0].get('description', 'N/A')} = {items[0].get('amount', 0)}")
+            # Show all items
+            for idx, itm in enumerate(items[:3]):
+                st.caption(f"  Item {idx+1}: {itm.get('description', 'N/A')} = {itm.get('amount', 0)}")
+        else:
+            st.caption("No items found in invoice!")
         if items:
             for j, item in enumerate(items):
                 # Show all items without expander
