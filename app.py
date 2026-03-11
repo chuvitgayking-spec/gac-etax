@@ -956,7 +956,7 @@ def show_upload():
     st.markdown("### 📤 อัปโหลดไฟล์ CSV/Excel/XML")
     uploaded_files = st.file_uploader(
         "เลือกไฟล์ (เลือกได้หลายไฟล์)", 
-        type=['csv', 'xlsx', 'xls', 'pdf', 'xml'], 
+        type=['xml'], 
         accept_multiple_files=True,
         key="file_uploader"
     )
