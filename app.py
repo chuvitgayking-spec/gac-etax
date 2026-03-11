@@ -44,7 +44,14 @@ DEFAULT_MAPPING = {
 
 import os
 # Database path - works on both local and cloud
-DB_PATH = os.environ.get('DB_PATH', '/tmp/invoices.db')
+import platform
+import os
+# Use local path on Mac/Linux, cloud path on deployment
+if platform.system() == 'Darwin' or platform.system() == 'Linux':
+    DEFAULT_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'invoices.db')
+else:
+    DEFAULT_DB = '/tmp/invoices.db'
+DB_PATH = os.environ.get('DB_PATH', DEFAULT_DB)
 UPLOAD_DIR = os.environ.get('UPLOAD_DIR', '/Users/chuvit/.openclaw/workspace/gac_etax/data/uploads')
 
 def list_uploaded_files():
@@ -766,7 +773,9 @@ def show_upload():
             st.success(f"📄 พบ {len(st.session_state['pending_invoices'])} ไฟล์ - ตรวจสอบข้อมูลก่อนบันทึก")
             
             # Show preview
-            for i, inv in enumerate(st.session_state['pending_invoices']):
+            for i, inv in enumerate(st.session_state.get('pending_invoices', [])):
+                if not inv:
+                    continue
                 with st.expander(f"📋 {inv.get('invoice_no', 'Invoice')}"):
                     st.write(f"**Customer:** {inv.get('customer_name', '-')}")
                     st.write(f"**Date:** {inv.get('invoice_date', '-')}")
@@ -781,7 +790,9 @@ def show_upload():
                     conn = sqlite3.connect(DB_PATH)
                     cursor = conn.cursor()
                     saved = 0
-                    for inv in st.session_state['pending_invoices']:
+                    for inv in st.session_state.get('pending_invoices', []):
+                        if not inv:
+                            continue
                         items_json = json.dumps(inv.get('items', []))
                         cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (NULL, :inv, :dt, :cust, :addr, :job, :awb, :ref, :rate, :amt, :thb, :items, :status, :curr)""",
                              {'inv': inv.get('invoice_no', ''),
