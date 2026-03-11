@@ -1399,7 +1399,7 @@ def show_invoice_list():
         items = inv.get('items', [])
         
         # Debug info - show more details
-        st.warning(f"DEBUG: Invoice {inv.get('invoice_no')} has {len(items)} items. Filename: {inv.get('filename', 'N/A')}")
+        st.warning(f"DEBUG: Invoice {inv.get('invoice_no')} has {len(items)} items. Filename: {inv.get('filename', 'N/A')}, Filepath: {inv.get('filepath', 'N/A')}")
         
         # Show first few items for debugging
         if items:
