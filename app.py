@@ -252,49 +252,48 @@ def load_invoices_from_db():
                             invoice_no = filename.replace('.xml', '').split('_')[-1]
 
                     # Extract items from XML - 14 items (THB format)
+                    import re
                     items = []
                     
-                    # DEBUG: Print invoice_no being processed
-                    print(f"DEBUG load: Processing invoice_no = {invoice_no}")
-                    
-                    # Extract items - simpler approach
-                    item_dict = {}
-                    
-                    # Get items from Details_Collection (first occurrence)
-                    for match in re.finditer(r'<Details[^>]*ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
-                        desc = match.group(1).replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
-                        try:
-                            amt = float(match.group(2))
-                        except:
-                            amt = 0
+                    try:
+                        # Get items from Details_Collection (first occurrence)
+                        item_dict = {}
+                        for match in re.finditer(r'<Details[^>]*ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
+                            desc = match.group(1).replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
+                            try:
+                                amt = float(match.group(2))
+                            except:
+                                amt = 0
+                            
+                            if desc and amt > 0:
+                                item_dict[desc] = {'amount': amt, 'vat': 0}
                         
-                        if desc and amt > 0:
-                            item_dict[desc] = {'amount': amt, 'vat': 0}
-                    
-                    # Get VAT from Details2_Collection
-                    for match in re.finditer(r'<Details2[^>]*Textbox17="([^"]*)"[^>]*Textbox20="([^"]*)"', xml_str):
-                        desc = match.group(1).replace('&amp;', '&').strip()
-                        try:
-                            vat_amt = float(match.group(2))
-                        except:
-                            vat_amt = 0
+                        # Get VAT from Details2_Collection
+                        for match in re.finditer(r'<Details2[^>]*Textbox17="([^"]*)"[^>]*Textbox20="([^"]*)"', xml_str):
+                            desc = match.group(1).replace('&amp;', '&').strip()
+                            try:
+                                vat_amt = float(match.group(2))
+                            except:
+                                vat_amt = 0
+                            
+                            if desc in item_dict:
+                                item_dict[desc]['vat'] = vat_amt
                         
-                        if desc in item_dict:
-                            item_dict[desc]['vat'] = vat_amt
-                    
-                    # Build items list
-                    for i, (desc, data) in enumerate(item_dict.items(), 1):
-                        vat_rate = "7" if data['vat'] > 0 else "0"
-                        items.append({
-                            'item_no': i,
-                            'description': desc,
-                            'amount': data['amount'],
-                            'vat_rate': vat_rate,
-                            'vat_amount': data['vat']
-                        })
-                    
-                    # Items already assigned to local 'items' variable - no need to assign to invoice_data
-                    print(f"DEBUG: Extracted {len(items)} items from XML")
+                        # Build items list
+                        for i, (desc, data) in enumerate(item_dict.items(), 1):
+                            vat_rate = "7" if data['vat'] > 0 else "0"
+                            items.append({
+                                'item_no': i,
+                                'description': desc,
+                                'amount': data['amount'],
+                                'vat_rate': vat_rate,
+                                'vat_amount': data['vat']
+                            })
+                        
+                        print(f"DEBUG: Extracted {len(items)} items from XML for {invoice_no}")
+                    except Exception as e:
+                        print(f"Item extraction error: {e}")
+                        items = []
                 except Exception as e:
                     print(f"XML Error: {e}")
                     pass
