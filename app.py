@@ -309,6 +309,10 @@ def load_invoices_from_db():
                             pass
                     
                     print(f"DEBUG: Built {len(items)} items for {invoice_no}")
+                    
+                    # Show in Streamlit UI
+                    if len(items) < 2:
+                        st.warning(f"⚠️ Only {len(items)} item(s) found!")
                 except Exception as e:
                     print(f"XML Error: {e}")
                     pass
