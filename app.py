@@ -108,9 +108,34 @@ def save_invoice_to_db(invoice_data, status='pending'):
     return invoice_id
 
 def load_invoices_from_db():
-    """Load invoices from uploaded files"""
-    files = list_uploaded_files()
+    """Load invoices from database first, then from uploaded files"""
     invoices = []
+    
+    # First try to load from database (for issued invoices)
+    try:
+        conn = sqlite3.connect(INVOICE_DB)
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM invoices ORDER BY created_at DESC LIMIT 50')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Convert to dict
+        for row in rows:
+            inv = dict(row)
+            # Parse items_json
+            if inv.get('items_json'):
+                try:
+                    inv['items'] = json.loads(inv['items_json'])
+                except:
+                    inv['items'] = []
+            else:
+                inv['items'] = []
+            invoices.append(inv)
+    except:
+        pass
+    
+    # Also load from uploaded files (for pending invoices)
+    files = list_uploaded_files()
     
     for i, f in enumerate(files):
         try:
@@ -1367,6 +1392,9 @@ def show_invoice_list():
         # Show items
         st.markdown("#### รายการสินค้า")
         items = inv.get('items', [])
+        
+        # Debug info
+        st.caption(f"DEBUG: Found {len(items)} items for invoice {inv.get('invoice_no', 'N/A')}")
         if items:
             for j, item in enumerate(items):
                 # Show all items without expander
