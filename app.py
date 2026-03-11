@@ -871,8 +871,8 @@ def parse_xml_invoice(content):
             if elem.get('BillingPartyName'):
                 invoice_data['customer_name'] = elem.get('BillingPartyName', '').replace('Billing Party:', '').strip()
             # Job No
-            if elem.get('Textbox59'):
-                invoice_data['job_number'] = elem.get('Textbox59', '')
+            if elem.get('Textbox188'):
+                invoice_data['job_number'] = elem.get('Textbox188', '')
             # AWB
             if elem.get('Textbox65'):
                 invoice_data['awb'] = elem.get('Textbox65', '')
