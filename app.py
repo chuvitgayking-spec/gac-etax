@@ -217,6 +217,7 @@ def load_invoices_from_db():
                     # Extract items from XML - improved
                     items = []
                     seen = set()
+                    seen_first_words = set()
                     
                     for match in re.finditer(r'ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
                         desc = match.group(1).replace('&amp;', '&').replace('&#xD;', '\n').replace('&#xA;', '\n').replace('&#13;', '\n').replace('&#10;', '\n').strip()
@@ -226,7 +227,11 @@ def load_invoices_from_db():
                             amt = 0
                         if desc and amt > 0 and desc not in seen and len(items) < 12 :
                             items.append({'item_no': len(items)+1, 'description': desc, 'amount': amt, 'vat_rate': '0', 'vat_amount': 0})
-                            seen.add(desc)
+                            # Check if first word (main service) is already seen
+                    first_word = desc.split()[0] if desc.split() else ''
+                    if first_word and first_word not in seen_first_words:
+                        seen.add(desc)
+                        seen_first_words.add(first_word)
 
                     for match in re.finditer(r'Textbox4="([^"]*)"[^>]*Textbox8="([^"]*)', xml_str):
                         desc = match.group(1).replace('&amp;', '&')
