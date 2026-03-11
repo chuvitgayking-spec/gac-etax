@@ -131,42 +131,54 @@ def load_invoices_from_db():
                     with open(filepath, 'r', encoding='utf-8') as xml_file:
                         xml_content = xml_file.read()
                     
-                    root = ET.fromstring(xml_content)
+                    # Try to parse
+                    try:
+                        root = ET.fromstring(xml_content)
+                    except:
+                        # If fails, try removing namespace
+                        import re
+                        xml_content = re.sub(r'xmlns[^=]*="[^"]*"', '', xml_content)
+                        root = ET.fromstring(xml_content)
                     
-                    # Search all elements for the data
-                    for elem in root.iter():
-                        # Invoice No - Textbox183
-                        val = elem.get('Textbox183') or elem.get(':Textbox183')
-                        if val and not invoice_no:
-                            invoice_no = val.strip().lstrip(': ')
-                        
-                        # Customer - BillingPartyName
-                        val = elem.get('BillingPartyName')
-                        if val and not customer_name:
-                            customer_name = val.replace('Billing Party:', '').strip()
-                        
-                        # Job No - Textbox188
-                        val = elem.get('Textbox188') or elem.get(':Textbox188')
-                        if val and not job_number:
-                            job_number = val.strip().lstrip(': ')
-                        
-                        # AWB - Textbox65
-                        val = elem.get('Textbox65') or elem.get(':Textbox65')
-                        if val and not awb:
-                            awb = val.strip().lstrip(': ')
-                        
-                        # Date - Textbox184
-                        val = elem.get('Textbox184') or elem.get(':Textbox184')
-                        if val and not invoice_date:
-                            invoice_date = val.split(' ')[0].lstrip(': ')
-                        
-                        # Total - BilledOnInvoice1
-                        val = elem.get('BilledOnInvoice1')
-                        if val and total_amount == 0:
-                            try:
-                                total_amount = float(val)
-                            except:
-                                pass
+                    # Convert all elements to check attributes
+                    xml_str = ET.tostring(root, encoding='unicode')
+                    
+                    # Use regex to find values more reliably
+                    import re
+                    
+                    # Find Textbox183 (Invoice No)
+                    match = re.search(r'Textbox183="([^"]*)"', xml_str)
+                    if match:
+                        invoice_no = match.group(1).strip()
+                    
+                    # Find BillingPartyName
+                    match = re.search(r'BillingPartyName="([^"]*)"', xml_str)
+                    if match:
+                        customer_name = match.group(1).replace("Billing Party:", "").strip()
+                    
+                    # Find Textbox188 (Job No)
+                    match = re.search(r'Textbox188="([^"]*)"', xml_str)
+                    if match:
+                        job_number = match.group(1).strip().lstrip(": ")
+                    
+                    # Find Textbox65 (AWB)
+                    match = re.search(r'Textbox65="([^"]*)"', xml_str)
+                    if match:
+                        awb = match.group(1).strip().lstrip(": ")
+                    
+                    # Find Textbox184 (Date)
+                    match = re.search(r'Textbox184="([^"]*)"', xml_str)
+                    if match:
+                        invoice_date = match.group(1).split(" ")[0].lstrip(": ")
+                    
+                    # Find BilledOnInvoice1 (Total USD)
+                    match = re.search(r'BilledOnInvoice1="([^"]*)"', xml_str)
+                    if match:
+                        try:
+                            total_amount = float(match.group(1))
+                        except:
+                            pass
+
                 except Exception as e:
                     print(f"XML Error: {e}")
                     pass
