@@ -65,15 +65,13 @@ def list_uploaded_files():
 def save_uploaded_file(uploaded_file):
     """Save uploaded file to uploads directory"""
     from datetime import datetime
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{timestamp}_{uploaded_file.name}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
     
-    # Clean up old files (keep only last 5)
+    # Clean up old files FIRST (keep only last 3)
     try:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
         files = sorted(os.listdir(UPLOAD_DIR))
-        if len(files) > 5:
-            for f in files[:-5]:
+        if len(files) > 3:
+            for f in files[:-3]:
                 try:
                     os.remove(os.path.join(UPLOAD_DIR, f))
                 except:
@@ -81,6 +79,9 @@ def save_uploaded_file(uploaded_file):
     except:
         pass
     
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{uploaded_file.name}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
     with open(filepath, 'wb') as f:
         f.write(uploaded_file.getbuffer())
     return filename, filepath
