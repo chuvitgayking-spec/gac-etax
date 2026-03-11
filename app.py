@@ -68,6 +68,19 @@ def save_uploaded_file(uploaded_file):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}_{uploaded_file.name}"
     filepath = os.path.join(UPLOAD_DIR, filename)
+    
+    # Clean up old files (keep only last 5)
+    try:
+        files = sorted(os.listdir(UPLOAD_DIR))
+        if len(files) > 5:
+            for f in files[:-5]:
+                try:
+                    os.remove(os.path.join(UPLOAD_DIR, f))
+                except:
+                    pass
+    except:
+        pass
+    
     with open(filepath, 'wb') as f:
         f.write(uploaded_file.getbuffer())
     return filename, filepath
