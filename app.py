@@ -804,8 +804,9 @@ def show_upload():
                         if not inv:
                             continue
                         items_json = json.dumps(inv.get('items', []))
-                        cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                             (inv.get('invoice_no', ''),
+                        cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                             (inv.get('filename', ''),
+                              inv.get('invoice_no', ''),
                               inv.get('invoice_date', ''),
                               inv.get('customer_name', ''),
                               inv.get('customer_address', ''),
