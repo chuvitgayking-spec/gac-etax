@@ -231,13 +231,31 @@ def load_invoices_from_db():
                             except:
                                 invoice_date = raw_date.lstrip(': ').split(" ")[0]
                     
-                    # Find BilledOnInvoice1 (Total USD)
-                    match = re.search(r'BilledOnInvoice1="([^"]*)"', xml_str)
-                    if match:
-                        try:
-                            total_amount = float(match.group(1))
-                        except:
-                            pass
+                    # Find TabInvoiceSummary for totals - NEW APPROACH
+                    summary_match = re.search(r'<TabInvoiceSummary([^>]*)>', xml_str)
+                    if summary_match:
+                        attrs = summary_match.group(1)
+                        # Revenue (Subtotal) - Textbox104
+                        rev_match = re.search(r'Textbox104="([^"]*)"', attrs)
+                        if rev_match:
+                            try:
+                                total_amount = float(rev_match.group(1))
+                            except:
+                                pass
+                        # VAT - Textbox117
+                        vat_match = re.search(r'Textbox117="([^"]*)"', attrs)
+                        if vat_match:
+                            try:
+                                vat_amount = float(vat_match.group(1))
+                            except:
+                                pass
+                        # Due Amount (Total) - Textbox122
+                        due_match = re.search(r'Textbox122="([^"]*)"', attrs)
+                        if due_match:
+                            try:
+                                total_thb = float(due_match.group(1))
+                            except:
+                                pass
                     
                     # Get exchange rate from XML
                     match = re.search(r'Textbox186="([^"]*)"', xml_str)
@@ -257,46 +275,44 @@ def load_invoices_from_db():
                         else:
                             invoice_no = filename.replace('.xml', '').split('_')[-1]
 
-                    # Extract items from XML - 14 items (THB format)
+                    # Extract items from XML - NEW APPROACH using business tags
                     import re
                     items = []
                     
                     try:
-                        # Get items from Details_Collection (first occurrence)
-                        item_dict = {}
-                        for match in re.finditer(r'<Details[^>]*ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
-                            desc = match.group(1).replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
+                        # Find Details2 tags for items
+                        details2_pattern = r'<Details2\s+[^>]*>'
+                        details2_matches = re.findall(details2_pattern, xml_str)
+                        
+                        for detail in details2_matches:
+                            # Extract description (Textbox17)
+                            desc_match = re.search(r'Textbox17="([^"]*)"', detail)
+                            # Extract amount (Textbox19)
+                            amt_match = re.search(r'Textbox19="([^"]*)"', detail)
+                            # Extract VAT amount (Textbox20)
+                            vat_match = re.search(r'Textbox20="([^"]*)"', detail)
+                            
+                            desc = desc_match.group(1).replace('&amp;', '&').strip() if desc_match else ''
                             try:
-                                amt = float(match.group(2))
+                                amt = float(amt_match.group(1)) if amt_match else 0
                             except:
                                 amt = 0
-                            
-                            if desc and amt > 0:
-                                item_dict[desc] = {'amount': amt, 'vat': 0}
-                        
-                        # Get VAT from Details2_Collection
-                        for match in re.finditer(r'<Details2[^>]*Textbox17="([^"]*)"[^>]*Textbox20="([^"]*)"', xml_str):
-                            desc = match.group(1).replace('&amp;', '&').strip()
                             try:
-                                vat_amt = float(match.group(2))
+                                vat_amt = float(vat_match.group(1)) if vat_match else 0
                             except:
                                 vat_amt = 0
                             
-                            if desc in item_dict:
-                                item_dict[desc]['vat'] = vat_amt
+                            if desc and amt > 0:
+                                vat_rate = "7" if vat_amt > 0 else "0"
+                                items.append({
+                                    'item_no': len(items) + 1,
+                                    'description': desc,
+                                    'amount': amt,
+                                    'vat_rate': vat_rate,
+                                    'vat_amount': vat_amt
+                                })
                         
-                        # Build items list
-                        for i, (desc, data) in enumerate(item_dict.items(), 1):
-                            vat_rate = "7" if data['vat'] > 0 else "0"
-                            items.append({
-                                'item_no': i,
-                                'description': desc,
-                                'amount': data['amount'],
-                                'vat_rate': vat_rate,
-                                'vat_amount': data['vat']
-                            })
-                        
-                        print(f"DEBUG: Extracted {len(items)} items from XML for {invoice_no}")
+                        print(f"DEBUG: Extracted {len(items)} items from Details2 for {invoice_no}")
                     except Exception as e:
                         print(f"Item extraction error: {e}")
                         items = []
