@@ -523,7 +523,17 @@ def get_invoice_history(limit=50):
     cursor.execute('SELECT * FROM invoices ORDER BY created_at DESC LIMIT ?', (limit,))
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    invoices = [dict(row) for row in rows]
+    # Parse items_json for each invoice
+    for inv in invoices:
+        if inv.get('items_json'):
+            try:
+                inv['items'] = json.loads(inv['items_json'])
+            except:
+                inv['items'] = []
+        else:
+            inv['items'] = []
+    return invoices
 
 # Initialize database
 init_database()
