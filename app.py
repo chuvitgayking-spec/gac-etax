@@ -1274,11 +1274,11 @@ def show_invoice_list():
     # Select invoice to edit
     options = []
     for inv in invoices:
-        name = inv.get('customer_name', 'Unknown')[:25]
+        name = inv.get('customer_name', 'Unknown')
         addr = inv.get('customer_address', '')
         # Shorten address for display
         if addr:
-            addr_short = addr.replace('\n', ', ')[:30]
+            addr_short = addr.replace('\n', ', ')
             options.append(f"{inv.get('invoice_no', 'N/A')} | {name} | {addr_short}")
         else:
             options.append(f"{inv.get('invoice_no', 'N/A')} | {name}")
@@ -1306,7 +1306,7 @@ def show_invoice_list():
             new_date = st.date_input("วันที่ออกใบเสร็จ", value=current_date, key=f"edit_date_{selected_idx}")
         
         new_customer = st.text_input("Customer Name", value=inv.get('customer_name', ''), key=f"edit_cust_{selected_idx}")
-        new_address = st.text_input("Address", value=inv.get('address', ''), key=f"edit_addr_{selected_idx}")
+        new_address = st.text_input("Address", value=inv.get('customer_address', ''), key=f"edit_addr_{selected_idx}")
         col1, col2 = st.columns([3, 1])
         with col1:
             # Use a callback approach - store rate in session
@@ -1316,8 +1316,13 @@ def show_invoice_list():
             if rate_key not in st.session_state:
                 st.session_state[rate_key] = 0.0
             
+            # Get exchange rate from invoice data
+            saved_rate = float(inv.get('exchange_rate', 0)) if inv.get('exchange_rate') else 0
+            if saved_rate > 0 and rate_key not in st.session_state:
+                st.session_state[rate_key] = saved_rate
+            
             new_rate = st.number_input("Exchange Rate (USD/THB)", 
-                                       value=st.session_state[rate_key] if st.session_state[rate_key] > 0 else 0.0, 
+                                       value=st.session_state[rate_key] if st.session_state[rate_key] > 0 else saved_rate, 
                                        min_value=0.0, step=0.0001, 
                                        key=f"edit_rate_{selected_idx}")
         with col2:
