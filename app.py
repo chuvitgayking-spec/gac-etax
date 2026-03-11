@@ -34,6 +34,9 @@ def list_uploaded_files():
     """List all uploaded files"""
     upload_dir = UPLOAD_DIR
     
+    # Debug
+    print(f"DEBUG list: UPLOAD_DIR = {UPLOAD_DIR}, exists = {os.path.exists(UPLOAD_DIR) if upload_dir else False}")
+    
     # Try to create directory
     if upload_dir:
         try:
@@ -1395,8 +1398,12 @@ def show_invoice_list():
         st.markdown("#### รายการสินค้า")
         items = inv.get('items', [])
         
-        # Debug info
-        st.caption(f"DEBUG: Found {len(items)} items for invoice {inv.get('invoice_no', 'N/A')}")
+        # Debug info - show more details
+        st.warning(f"DEBUG: Invoice {inv.get('invoice_no')} has {len(items)} items. Filename: {inv.get('filename', 'N/A')}")
+        
+        # Show first few items for debugging
+        if items:
+            st.caption(f"First item: {items[0].get('description', 'N/A')} = {items[0].get('amount', 0)}")
         if items:
             for j, item in enumerate(items):
                 # Show all items without expander
