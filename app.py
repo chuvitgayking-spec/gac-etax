@@ -1359,12 +1359,15 @@ def show_invoice_list():
                 
                 # Show VAT summary for this item
                 if new_cat == "PARTIAL_VAT" and new_amount > 0:
-                    st.caption(f"💰 Amount: ${new_amount:,.2f} | VAT: ฿{item.get('manual_vat', 0):,.2f} | Net: ฿{new_amount * exchange_rate - item.get('manual_vat', 0):,.2f}")
+                    rate = inv.get('exchange_rate', 30.909)
+                    st.caption(f"💰 Amount: ${new_amount:,.2f} | VAT: ฿{item.get('manual_vat', 0):,.2f} | Net: ฿{new_amount * rate - item.get('manual_vat', 0):,.2f}")
                 elif new_cat == "VAT_7" and new_amount > 0:
-                    vat_thb = new_amount * exchange_rate * 0.07
-                    st.caption(f"💰 Amount: ${new_amount:,.2f} | VAT 7%: ฿{vat_thb:,.2f} | Net: ฿{new_amount * exchange_rate - vat_thb:,.2f}")
+                    rate = inv.get('exchange_rate', 30.909)
+                    vat_thb = new_amount * rate * 0.07
+                    st.caption(f"💰 Amount: ${new_amount:,.2f} | VAT 7%: ฿{vat_thb:,.2f} | Net: ฿{new_amount * rate - vat_thb:,.2f}")
                 elif new_cat == "NON_VAT" and new_amount > 0:
-                    st.caption(f"💰 Amount: ${new_amount:,.2f} | Non-VAT")
+                    rate = inv.get('exchange_rate', 30.909)
+                    st.caption(f"💰 Amount: ${new_amount:,.2f} | Non-VAT | Total: ฿{new_amount * rate:,.2f}")
     
     # Navigation buttons
     st.markdown("---")
