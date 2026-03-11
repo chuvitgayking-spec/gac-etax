@@ -113,7 +113,7 @@ def load_invoices_from_db():
     
     # First try to load from database (for issued invoices)
     try:
-        conn = sqlite3.connect(INVOICE_DB)
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM invoices ORDER BY created_at DESC LIMIT 50')
         rows = cursor.fetchall()
