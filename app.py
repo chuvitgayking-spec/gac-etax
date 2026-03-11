@@ -275,40 +275,60 @@ def load_invoices_from_db():
                         else:
                             invoice_no = filename.replace('.xml', '').split('_')[-1]
 
-                    # Extract items from XML - SIMPLE APPROACH
+                    # Extract items from XML - HARDCODED FOR NOW (14 items from sample)
                     import re
                     items = []
                     
-                    # SIMPLE: Just find all Textbox17, Textbox19, Textbox20 in the entire XML
-                    # This is more reliable than trying to parse specific tags
-                    descs = re.findall(r'Textbox17="([^"]*)"', xml_str)
-                    amounts = re.findall(r'Textbox19="([^"]*)"', xml_str)
-                    vats = re.findall(r'Textbox20="([^"]*)"', xml_str)
+                    # Try to find items - use SERVICE CODE approach instead
+                    # ServiceCode2 has the description
+                    service_codes = re.findall(r'ServiceCode2="([^"]*)"', xml_str)
+                    # Textbox61 has the amount (in the Details section)
+                    amounts_61 = re.findall(r'Textbox61="([^"]*)"', xml_str)
                     
-                    print(f"DEBUG: Found {len(descs)} Textbox17, {len(amounts)} Textbox19, {len(vats)} Textbox20")
+                    print(f"DEBUG: Found {len(service_codes)} ServiceCode2, {len(amounts_61)} Textbox61")
                     
-                    # Build items - take the first set that match
-                    for i in range(min(len(descs), len(amounts))):
+                    # Build items from ServiceCode2 + Textbox61
+                    for i in range(min(len(service_codes), len(amounts_61))):
                         try:
-                            desc = descs[i].strip()
+                            desc = service_codes[i].replace('&amp;', '&').strip()
                             if not desc:
                                 continue
-                            amt = float(amounts[i])
-                            vat_amt = float(vats[i]) if i < len(vats) else 0
+                            amt = float(amounts_61[i])
                             
-                            if amt > 0:
-                                vat_rate = "7" if vat_amt > 0 else "0"
+                            if desc and amt > 0:
                                 items.append({
                                     'item_no': len(items) + 1,
                                     'description': desc,
                                     'amount': amt,
-                                    'vat_rate': vat_rate,
-                                    'vat_amount': vat_amt
+                                    'vat_rate': '0',
+                                    'vat_amount': 0
                                 })
-                        except Exception as e:
+                        except:
                             pass
                     
-                    print(f"DEBUG: Built {len(items)} items for {invoice_no}")
+                    print(f"DEBUG: Built {len(items)} items from ServiceCode2+Textbox61")
+                    
+                    # If still no items, use Details_Collection approach
+                    if not items:
+                        details = re.findall(r'<Details[^>]*Textbox4="([^"]*)"[^>]*Textbox8="([^"]*)"', xml_str)
+                        print(f"DEBUG: Trying Details, found {len(details)}")
+                        
+                        for d in details:
+                            try:
+                                desc = d[0].strip()
+                                amt = float(d[1])
+                                if desc and amt > 0:
+                                    items.append({
+                                        'item_no': len(items) + 1,
+                                        'description': desc,
+                                        'amount': amt,
+                                        'vat_rate': '0',
+                                        'vat_amount': 0
+                                    })
+                            except:
+                                pass
+                    
+                    print(f"DEBUG: Final items: {len(items)}")
                     
                     # Show in Streamlit UI
                     if len(items) < 2:
