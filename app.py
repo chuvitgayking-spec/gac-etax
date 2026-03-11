@@ -265,9 +265,7 @@ def load_invoices_from_db():
                             'vat_amount': data['vat']
                         })
                     
-                    # Assign items to invoice_data
-                    invoice_data['items'] = items
-                    
+                    # Items already assigned to local 'items' variable - no need to assign to invoice_data
                     print(f"DEBUG: Extracted {len(items)} items from XML")
                 except Exception as e:
                     print(f"XML Error: {e}")
