@@ -186,14 +186,14 @@ def load_invoices_from_db():
                             from datetime import datetime
                             # Try DD MMM YYYY first
                             dt = datetime.strptime(raw_date.split(" ")[0] + " " + raw_date.split(" ")[1] + " " + raw_date.split(" ")[2], "%d %b %Y")
-                            invoice_date = dt.strftime("%d %b %Y")
+                            invoice_date = dt.strftime("%d/%m/%Y")
                         except:
                             try:
                                 # Try MM/DD/YYYY format
                                 date_part = raw_date.split(" ")[0]
                                 from datetime import datetime
                                 dt = datetime.strptime(date_part, "%m/%d/%Y")
-                                invoice_date = dt.strftime("%d %b %Y")
+                                invoice_date = dt.strftime("%d/%m/%Y")
                             except:
                                 invoice_date = raw_date.lstrip(': ').split(" ")[0]
                     
