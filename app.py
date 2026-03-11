@@ -133,23 +133,42 @@ def load_invoices_from_db():
                     
                     root = ET.fromstring(xml_content)
                     
+                    # Search all elements for the data
                     for elem in root.iter():
-                        if elem.get('Textbox183'):
-                            invoice_no = elem.get('Textbox183', '')
-                        if elem.get('BillingPartyName'):
-                            customer_name = elem.get('BillingPartyName', '').replace('Billing Party:', '').strip()
-                        if elem.get('Textbox188'):
-                            job_number = elem.get('Textbox188', '')
-                        if elem.get('Textbox65'):
-                            awb = elem.get('Textbox65', '').strip()
-                        if elem.get('Textbox184'):
-                            invoice_date = elem.get('Textbox184', '').split(' ')[0]
-                        if elem.get('BilledOnInvoice1'):
+                        # Invoice No - Textbox183
+                        val = elem.get('Textbox183') or elem.get(':Textbox183')
+                        if val and not invoice_no:
+                            invoice_no = val.strip().lstrip(': ')
+                        
+                        # Customer - BillingPartyName
+                        val = elem.get('BillingPartyName')
+                        if val and not customer_name:
+                            customer_name = val.replace('Billing Party:', '').strip()
+                        
+                        # Job No - Textbox188
+                        val = elem.get('Textbox188') or elem.get(':Textbox188')
+                        if val and not job_number:
+                            job_number = val.strip().lstrip(': ')
+                        
+                        # AWB - Textbox65
+                        val = elem.get('Textbox65') or elem.get(':Textbox65')
+                        if val and not awb:
+                            awb = val.strip().lstrip(': ')
+                        
+                        # Date - Textbox184
+                        val = elem.get('Textbox184') or elem.get(':Textbox184')
+                        if val and not invoice_date:
+                            invoice_date = val.split(' ')[0].lstrip(': ')
+                        
+                        # Total - BilledOnInvoice1
+                        val = elem.get('BilledOnInvoice1')
+                        if val and total_amount == 0:
                             try:
-                                total_amount = float(elem.get('BilledOnInvoice1', 0))
+                                total_amount = float(val)
                             except:
                                 pass
-                except:
+                except Exception as e:
+                    print(f"XML Error: {e}")
                     pass
             
             elif filename.endswith(('.xlsx', '.xls')):
