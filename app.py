@@ -804,20 +804,20 @@ def show_upload():
                         if not inv:
                             continue
                         items_json = json.dumps(inv.get('items', []))
-                        cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (NULL, :inv, :dt, :cust, :addr, :job, :awb, :ref, :rate, :amt, :thb, :items, :status, :curr)""",
-                             {'inv': inv.get('invoice_no', ''),
-                              'dt': inv.get('invoice_date', ''),
-                              'cust': inv.get('customer_name', ''),
-                              'addr': inv.get('customer_address', ''),
-                              'job': inv.get('job_number', ''),
-                              'awb': inv.get('awb', ''),
-                              'ref': inv.get('job_ref', ''),
-                              'rate': inv.get('exchange_rate', 1),
-                              'amt': inv.get('total_amount', 0),
-                              'thb': inv.get('total_thb', 0),
-                              'items': items_json,
-                              'status': 'uploaded',
-                              'curr': inv.get('currency', 'USD')})
+                        cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                             (inv.get('invoice_no', ''),
+                              inv.get('invoice_date', ''),
+                              inv.get('customer_name', ''),
+                              inv.get('customer_address', ''),
+                              inv.get('job_number', ''),
+                              inv.get('awb', ''),
+                              inv.get('job_ref', ''),
+                              inv.get('exchange_rate', 1),
+                              inv.get('total_amount', 0),
+                              inv.get('total_thb', 0),
+                              items_json,
+                              'uploaded',
+                              inv.get('currency', 'USD')))
                         saved += 1
                     conn.commit()
                     conn.close()
