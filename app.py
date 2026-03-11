@@ -28,7 +28,7 @@ COMPANY_WEB = "www.gac.com/thailand"
 import os
 # Database path - works on both local and cloud
 DB_PATH = os.environ.get('DB_PATH', '/tmp/invoices.db')
-UPLOAD_DIR = os.environ.get('UPLOAD_DIR', '/tmp/uploads')
+UPLOAD_DIR = os.environ.get('UPLOAD_DIR', '/Users/chuvit/.openclaw/workspace/gac_etax/data/uploads')
 
 def list_uploaded_files():
     """List all uploaded files"""
