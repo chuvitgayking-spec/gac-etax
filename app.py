@@ -646,10 +646,11 @@ def main():
     
     # Initialize menu in session state
     if 'menu' not in st.session_state:
-        st.session_state['menu'] = '📤 Upload'
+        st.session_state['menu'] = '🏠 Dashboard'
     
-    menu = st.sidebar.radio("เมนู", ["📤 Upload", "📋 Invoice List", "⚙️ Settings", "👁️ Preview", "📊 History"], 
-                          index=["📤 Upload", "📋 Invoice List", "⚙️ Settings", "👁️ Preview", "📊 History"].index(st.session_state['menu']))
+    menu_options = ["🏠 Dashboard", "📤 Upload", "📋 Invoice List", "⚙️ Settings", "👁️ Preview", "📊 History"]
+    menu = st.sidebar.radio("เมนู", menu_options, 
+                          index=menu_options.index(st.session_state['menu']))
     
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"**{COMPANY_NAME}**")
