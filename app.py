@@ -254,6 +254,9 @@ def load_invoices_from_db():
                     # Extract items from XML - 14 items (THB format)
                     items = []
                     
+                    # DEBUG: Print invoice_no being processed
+                    print(f"DEBUG load: Processing invoice_no = {invoice_no}")
+                    
                     # Extract items - simpler approach
                     item_dict = {}
                     
