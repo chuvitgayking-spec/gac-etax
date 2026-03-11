@@ -264,6 +264,11 @@ def load_invoices_from_db():
                             'vat_rate': vat_rate,
                             'vat_amount': data['vat']
                         })
+                    
+                    # Assign items to invoice_data
+                    invoice_data['items'] = items
+                    
+                    print(f"DEBUG: Extracted {len(items)} items from XML")
                 except Exception as e:
                     print(f"XML Error: {e}")
                     pass
