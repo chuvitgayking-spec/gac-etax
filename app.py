@@ -225,19 +225,22 @@ def load_invoices_from_db():
                         else:
                             invoice_no = filename.replace('.xml', '').split('_')[-1]
 
-                    # Extract items from XML - improved
+                    # Extract items from XML - 14 items
                     items = []
-                    seen = set()
-                    seen_first_words = set()
                     
+                    # Get items from ServiceCode2 + Textbox61
                     for match in re.finditer(r'ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
-                        desc = match.group(1).replace('&amp;', '&').replace('&#xD;', '\n').replace('&#xA;', '\n').replace('&#13;', '\n').replace('&#10;', '\n').strip()
+                        desc = match.group(1).replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
                         try:
                             amt = float(match.group(2))
-                            # Check for VAT info
+                        except:
+                            amt = 0
+                        
+                        if desc and amt > 0:
+                            # Find VAT from Details2 section
                             vat_rate = "0"
                             vat_amount = 0
-                            for vat_match in re.finditer(r'Textbox17="([^"]*)"[^>]*Textbox20="([^"]*)', xml_str):
+                            for vat_match in re.finditer(r'Textbox17="([^"]*)"[^>]*Textbox20="([^"]*)"', xml_str):
                                 if vat_match.group(1).strip() == desc.strip():
                                     try:
                                         vat_amount = float(vat_match.group(2))
@@ -252,26 +255,6 @@ def load_invoices_from_db():
                                 'vat_rate': vat_rate,
                                 'vat_amount': vat_amount
                             })
-                        except:
-                            amt = 0
-                        if desc and amt > 0 and desc not in seen and len(items) < 12 :
-                            items.append({'item_no': len(items)+1, 'description': desc, 'amount': amt, 'vat_rate': '0', 'vat_amount': 0})
-                            # Check if first word (main service) is already seen
-                    first_word = desc.split()[0] if desc.split() else ''
-                    if first_word and first_word not in seen_first_words:
-                        seen.add(desc)
-                        seen_first_words.add(first_word)
-
-                    for match in re.finditer(r'Textbox4="([^"]*)"[^>]*Textbox8="([^"]*)', xml_str):
-                        desc = match.group(1).replace('&amp;', '&')
-                        try:
-                            amount = float(match.group(2))
-                        except:
-                            amount = 0
-                        if desc and amount > 0 and 'Amount' not in desc:
-                            if not any(i['description'] == desc for i in items):
-                                items.append({'item_no': len(items)+1, 'description': desc, 'amount': amount, 'vat_rate': '0', 'vat_amount': 0})
-
                 except Exception as e:
                     print(f"XML Error: {e}")
                     pass
