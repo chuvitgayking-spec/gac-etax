@@ -611,9 +611,9 @@ def generate_pdf(invoice_data):
             str(item['item_no']),
             item['description'][:30],
             f"${float(item['amount']):,.2f}",
-            f"{item['vat_rate']}%",
-            f"${float(item['vat_amount']):,.2f}",
-            f"฿{float(item['amount_thb']):,.2f}"
+            f"{item.get('vat_rate', '7')}%",
+            f"${float(item.get('vat_amount', 0)):.2f}",
+            f"฿{float(item['amount']) * float(invoice_data.get('exchange_rate', 30)):.2f}"
         ])
     
     items_table = Table(table_data, colWidths=[1*cm, 7*cm, 3*cm, 2*cm, 2*cm, 4*cm])
