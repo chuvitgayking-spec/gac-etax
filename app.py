@@ -1319,7 +1319,11 @@ def show_invoice_list():
                 with col1:
                     new_desc = st.text_input(f"Item {j+1} Description", value=item.get('description', ''), key=f"item_desc_{selected_idx}_{j}")
                 with col2:
-                    new_amount = st.number_input(f"Item {j+1} Amount", value=float(item.get('amount', 0)), min_value=0.0, step=0.01, key=f"item_amt_{selected_idx}_{j}")
+                    new_amount_str = st.text_input(f"Item {j+1} Amount", value=str(item.get("amount", 0)), key=f"item_amt_{selected_idx}_{j}")
+                    try:
+                        new_amount = float(new_amount_str.replace(",", ""))
+                    except:
+                        new_amount = 0
                 with col3:
                     new_cat = st.selectbox(f"Item {j+1} VAT", ["NON_VAT", "VAT_7", "PARTIAL_VAT"], 
                                         index=["NON_VAT", "VAT_7", "PARTIAL_VAT"].index(item.get('category', 'VAT_7')),
