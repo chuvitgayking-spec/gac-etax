@@ -804,7 +804,6 @@ def generate_xml(invoice_data):
     # Buyer
     buyer = etree.SubElement(root, 'Buyer')
     etree.SubElement(buyer, 'Name').text = invoice_data.get('customer_name', '')
-        etree.SubElement(buyer, 'Address').text = invoice_data.get('address', '')
     
     # Items
     items_elem = etree.SubElement(root, 'Items')
