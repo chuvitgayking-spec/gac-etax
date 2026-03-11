@@ -164,7 +164,8 @@ def load_invoices_from_db():
                     customer_name = raw_name.split('\n')[0].split('\r')[0].strip()
                     address = ' '.join(raw_name.split('\n')[1:]).strip() if '\n' in raw_name else ''
                     if address:
-                        customer_name = customer_name + ' | ' + address[:50]  # First 4 words
+                        customer_name = customer_name + ' | ' + address[:50]
+                    invoice_data['address'] = address  # First 4 words
                     
                     # Find Textbox188 (Job No)
                     match = re.search(r'Textbox188="([^"]*)"', xml_str)
@@ -439,6 +440,7 @@ def init_database():
             invoice_no TEXT UNIQUE NOT NULL,
             running_no TEXT NOT NULL,
             customer_name TEXT,
+            address TEXT,
             invoice_date TEXT,
             subtotal REAL,
             vat_amount REAL,
@@ -727,7 +729,7 @@ def generate_pdf(invoice_data):
     # Invoice Info
     info_data = [
         ['Invoice No:', invoice_data.get('invoice_no', ''), 'Running No:', invoice_data.get('running_no', '')],
-        ['Date:', invoice_data.get('invoice_date', ''), 'Customer:', invoice_data.get('customer_name', '')],
+        ['Customer:', invoice_data.get('customer_name', ''), 'Address:', invoice_data.get('address', '')]
     ]
     info_table = Table(info_data, colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
     info_table.setStyle(TableStyle([
@@ -802,6 +804,7 @@ def generate_xml(invoice_data):
     # Buyer
     buyer = etree.SubElement(root, 'Buyer')
     etree.SubElement(buyer, 'Name').text = invoice_data.get('customer_name', '')
+        etree.SubElement(buyer, 'Address').text = invoice_data.get('address', '')
     
     # Items
     items_elem = etree.SubElement(root, 'Items')
