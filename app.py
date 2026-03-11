@@ -279,6 +279,10 @@ def load_invoices_from_db():
                     import re
                     items = []
                     
+                    # Debug: Check if XML contains Details2
+                    has_details2 = 'Details2' in xml_str
+                    print(f"DEBUG: XML has Details2: {has_details2}")
+                    
                     try:
                         # Find Details2 tags for items
                         details2_pattern = r'<Details2\s+[^>]*>'
@@ -433,7 +437,7 @@ def load_invoices_from_db():
             
             # If no items, create a default one
             if not items:
-                print(f"DEBUG: No items found for invoice {invoice_no}! Using default.")
+                print(f"ERROR: No items found for invoice {invoice_no}! Using default. XML length: {len(xml_str) if 'xml_str' in dir() else 0}")
                 items = [{
                     'item_no': 1,
                     'description': 'Freight Charges',
