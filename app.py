@@ -275,51 +275,28 @@ def load_invoices_from_db():
                         else:
                             invoice_no = filename.replace('.xml', '').split('_')[-1]
 
-                    # Extract items from XML - NEW APPROACH using business tags
+                    # Extract items from XML - SIMPLE APPROACH
                     import re
                     items = []
                     
-                    # Debug: Check if XML contains Details2
-                    has_details2 = 'Details2' in xml_str
-                    print(f"DEBUG: XML has Details2: {has_details2}")
-                    print(f"DEBUG: XML length = {len(xml_str)}")
+                    # SIMPLE: Just find all Textbox17, Textbox19, Textbox20 in the entire XML
+                    # This is more reliable than trying to parse specific tags
+                    descs = re.findall(r'Textbox17="([^"]*)"', xml_str)
+                    amounts = re.findall(r'Textbox19="([^"]*)"', xml_str)
+                    vats = re.findall(r'Textbox20="([^"]*)"', xml_str)
                     
-                    # Also check for key strings
-                    has_TabServiceDetails = 'TabServiceDetails' in xml_str
-                    has_TabInvoiceSummary = 'TabInvoiceSummary' in xml_str
-                    print(f"DEBUG: Has TabServiceDetails: {has_TabServiceDetails}, Has TabInvoiceSummary: {has_TabInvoiceSummary}")
+                    print(f"DEBUG: Found {len(descs)} Textbox17, {len(amounts)} Textbox19, {len(vats)} Textbox20")
                     
-                    try:
-                        # Find Details2 tags for items
-                        details2_pattern = r'<Details2\s+[^>]*>'
-                        details2_matches = re.findall(details2_pattern, xml_str)
-                        
-                        print(f"DEBUG: Found {len(details2_matches)} Details2 elements with pattern 1")
-                        
-                        # Try alternate pattern
-                        alt_pattern = r'<Details2'
-                        alt_matches = re.findall(alt_pattern, xml_str)
-                        print(f"DEBUG: Found {len(alt_matches)} Details2 with simple pattern")
-                        
-                        for detail in details2_matches:
-                            # Extract description (Textbox17)
-                            desc_match = re.search(r'Textbox17="([^"]*)"', detail)
-                            # Extract amount (Textbox19)
-                            amt_match = re.search(r'Textbox19="([^"]*)"', detail)
-                            # Extract VAT amount (Textbox20)
-                            vat_match = re.search(r'Textbox20="([^"]*)"', detail)
+                    # Build items - take the first set that match
+                    for i in range(min(len(descs), len(amounts))):
+                        try:
+                            desc = descs[i].strip()
+                            if not desc:
+                                continue
+                            amt = float(amounts[i])
+                            vat_amt = float(vats[i]) if i < len(vats) else 0
                             
-                            desc = desc_match.group(1).replace('&amp;', '&').strip() if desc_match else ''
-                            try:
-                                amt = float(amt_match.group(1)) if amt_match else 0
-                            except:
-                                amt = 0
-                            try:
-                                vat_amt = float(vat_match.group(1)) if vat_match else 0
-                            except:
-                                vat_amt = 0
-                            
-                            if desc and amt > 0:
+                            if amt > 0:
                                 vat_rate = "7" if vat_amt > 0 else "0"
                                 items.append({
                                     'item_no': len(items) + 1,
@@ -328,11 +305,10 @@ def load_invoices_from_db():
                                     'vat_rate': vat_rate,
                                     'vat_amount': vat_amt
                                 })
-                        
-                        print(f"DEBUG: Extracted {len(items)} items from Details2 for {invoice_no}")
-                    except Exception as e:
-                        print(f"Item extraction error: {e}")
-                        items = []
+                        except Exception as e:
+                            pass
+                    
+                    print(f"DEBUG: Built {len(items)} items for {invoice_no}")
                 except Exception as e:
                     print(f"XML Error: {e}")
                     pass
