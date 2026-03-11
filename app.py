@@ -146,10 +146,15 @@ def load_invoices_from_db():
                     # Use regex to find values more reliably
                     import re
                     
-                    # Find Textbox183 (Invoice No)
+                    # Find Textbox183 (Invoice No) - try multiple patterns
                     match = re.search(r'Textbox183="([^"]*)"', xml_str)
+                    if not match:
+                        match = re.search(r'Textbox183=>([^<]*)', xml_str)
                     if match:
                         invoice_no = match.group(1).strip()
+                    
+                    # Debug: print what we found
+                    print(f"DEBUG: invoice_no = {invoice_no}")
                     
                     # Find BillingPartyName
                     match = re.search(r'BillingPartyName="([^"]*)"', xml_str)
@@ -178,6 +183,15 @@ def load_invoices_from_db():
                             total_amount = float(match.group(1))
                         except:
                             pass
+                    
+                    # Fallback: if still no invoice_no, try filename
+                    if not invoice_no and filename:
+                        # Try to extract from filename pattern like BKK3101523543
+                        match = re.search(r'(BKK\\d+)', filename)
+                        if match:
+                            invoice_no = match.group(1)
+                        else:
+                            invoice_no = filename.replace('.xml', '').split('_')[-1]
 
                 except Exception as e:
                     print(f"XML Error: {e}")
