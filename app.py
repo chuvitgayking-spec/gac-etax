@@ -124,7 +124,35 @@ def load_invoices_from_db():
             total_amount = 0
             items = []
             
-            if filename.endswith(('.xlsx', '.xls')):
+            # Handle XML files
+            if filename.endswith('.xml'):
+                try:
+                    import xml.etree.ElementTree as ET
+                    with open(filepath, 'r', encoding='utf-8') as xml_file:
+                        xml_content = xml_file.read()
+                    
+                    root = ET.fromstring(xml_content)
+                    
+                    for elem in root.iter():
+                        if elem.get('Textbox183'):
+                            invoice_no = elem.get('Textbox183', '')
+                        if elem.get('BillingPartyName'):
+                            customer_name = elem.get('BillingPartyName', '').replace('Billing Party:', '').strip()
+                        if elem.get('Textbox188'):
+                            job_number = elem.get('Textbox188', '')
+                        if elem.get('Textbox65'):
+                            awb = elem.get('Textbox65', '').strip()
+                        if elem.get('Textbox184'):
+                            invoice_date = elem.get('Textbox184', '').split(' ')[0]
+                        if elem.get('BilledOnInvoice1'):
+                            try:
+                                total_amount = float(elem.get('BilledOnInvoice1', 0))
+                            except:
+                                pass
+                except:
+                    pass
+            
+            elif filename.endswith(('.xlsx', '.xls')):
                 try:
                     import openpyxl
                     wb = openpyxl.load_workbook(filepath, data_only=True)
