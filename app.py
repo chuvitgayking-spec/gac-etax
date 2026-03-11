@@ -225,11 +225,14 @@ def load_invoices_from_db():
                         else:
                             invoice_no = filename.replace('.xml', '').split('_')[-1]
 
-                    # Extract items from XML - 14 items
+                    # Extract items from XML - 14 items (THB format)
                     items = []
                     
-                    # Get items from ServiceCode2 + Textbox61
-                    for match in re.finditer(r'ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
+                    # Extract items - simpler approach
+                    item_dict = {}
+                    
+                    # Get items from Details_Collection (first occurrence)
+                    for match in re.finditer(r'<Details[^>]*ServiceCode2="([^"]*)"[^>]*Textbox61="([^"]*)"', xml_str):
                         desc = match.group(1).replace('&amp;', '&').replace('&#xD;', ' ').replace('&#xA;', ' ').strip()
                         try:
                             amt = float(match.group(2))
@@ -237,24 +240,29 @@ def load_invoices_from_db():
                             amt = 0
                         
                         if desc and amt > 0:
-                            # Find VAT from Details2 section
-                            vat_rate = "0"
-                            vat_amount = 0
-                            for vat_match in re.finditer(r'Textbox17="([^"]*)"[^>]*Textbox20="([^"]*)"', xml_str):
-                                if vat_match.group(1).strip() == desc.strip():
-                                    try:
-                                        vat_amount = float(vat_match.group(2))
-                                        if vat_amount > 0:
-                                            vat_rate = "7"
-                                    except:
-                                        pass
-                            items.append({
-                                'item_no': len(items)+1,
-                                'description': desc,
-                                'amount': amt,
-                                'vat_rate': vat_rate,
-                                'vat_amount': vat_amount
-                            })
+                            item_dict[desc] = {'amount': amt, 'vat': 0}
+                    
+                    # Get VAT from Details2_Collection
+                    for match in re.finditer(r'<Details2[^>]*Textbox17="([^"]*)"[^>]*Textbox20="([^"]*)"', xml_str):
+                        desc = match.group(1).replace('&amp;', '&').strip()
+                        try:
+                            vat_amt = float(match.group(2))
+                        except:
+                            vat_amt = 0
+                        
+                        if desc in item_dict:
+                            item_dict[desc]['vat'] = vat_amt
+                    
+                    # Build items list
+                    for i, (desc, data) in enumerate(item_dict.items(), 1):
+                        vat_rate = "7" if data['vat'] > 0 else "0"
+                        items.append({
+                            'item_no': i,
+                            'description': desc,
+                            'amount': data['amount'],
+                            'vat_rate': vat_rate,
+                            'vat_amount': data['vat']
+                        })
                 except Exception as e:
                     print(f"XML Error: {e}")
                     pass
