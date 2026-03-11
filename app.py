@@ -1082,41 +1082,13 @@ def process_single_file(uploaded_file, return_data=False):
     st.markdown("### 📋 Items Found")
     
     # Allow editing tax category
-    mapping = DEFAULT_MAPPING.copy()
+    # Single VAT category for all items
+    default_cat = "VAT_7"
+    all_categories = ["NON_VAT", "VAT_7"]
+    default_cat = st.selectbox("VAT Category สำหรับทุก Item", all_categories, index=1)
     
     for item in items:
-        col1, col2, col3 = st.columns([1, 4, 2])
-        with col1:
-            st.write(f"**{item['item_no']}**")
-        with col2:
-            st.write(item['description'])
-        with col3:
-            current_cat = determine_category(item['description'], mapping)
-            
-            if 'OCEAN' in item['description'].upper():
-                category = st.selectbox(
-                    "Category",
-                    ["NON_VAT", "PARTIAL_VAT", "VAT_7"],
-                    index=["NON_VAT", "PARTIAL_VAT", "VAT_7"].index(current_cat),
-                    key=f"cat_{uploaded_file.name}_{item['item_no']}"
-                )
-                if category == "PARTIAL_VAT":
-                    vat_input = st.number_input(
-                        "VAT Amount (THB)",
-                        min_value=0.0,
-                        value=float(item['amount']) * 0.07,
-                        key=f"vat_{uploaded_file.name}_{item['item_no']}"
-                    )
-                    item['manual_vat'] = vat_input
-                item['category'] = category
-            else:
-                category = st.selectbox(
-                    "Category",
-                    ["NON_VAT", "VAT_7"],
-                    index=["NON_VAT", "VAT_7"].index(current_cat) if current_cat in ["NON_VAT", "VAT_7"] else 1,
-                    key=f"cat_{uploaded_file.name}_{item['item_no']}"
-                )
-                item['category'] = category
+        item['category'] = default_cat
     
     # Date and Exchange rate
     st.markdown("### 📅 วันที่ & 💱 อัตราแลกเปลี่ยน")
