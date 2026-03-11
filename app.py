@@ -172,6 +172,9 @@ def load_invoices_from_db():
                     # Convert all elements to check attributes
                     xml_str = ET.tostring(root, encoding='unicode')
                     
+                    # Debug: show XML content length
+                    print(f"DEBUG: XML content length for {filename}: {len(xml_str)} chars")
+                    
                     # Use regex to find values more reliably
                     import re
                     
@@ -414,6 +417,7 @@ def load_invoices_from_db():
             
             # If no items, create a default one
             if not items:
+                print(f"DEBUG: No items found for invoice {invoice_no}! Using default.")
                 items = [{
                     'item_no': 1,
                     'description': 'Freight Charges',
