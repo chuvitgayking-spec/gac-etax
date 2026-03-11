@@ -180,16 +180,22 @@ def load_invoices_from_db():
                     if not match:
                         match = re.search(r'Textbox184[^>]*>([^<]*)', xml_str)
                     if match:
-                        raw_date = match.group(1)
-                        # Get just the date part (before space)
-                        invoice_date = raw_date.split(" ")[0].lstrip(': ')
-                        # Try to format as DD MMM YYYY
+                        raw_date = match.group(1).strip()
+                        # Check if already in good format like "09 Mar 2026"
                         try:
                             from datetime import datetime
-                            dt = datetime.strptime(invoice_date, "%m/%d/%Y")
+                            # Try DD MMM YYYY first
+                            dt = datetime.strptime(raw_date.split(" ")[0] + " " + raw_date.split(" ")[1] + " " + raw_date.split(" ")[2], "%d %b %Y")
                             invoice_date = dt.strftime("%d %b %Y")
                         except:
-                            pass
+                            try:
+                                # Try MM/DD/YYYY format
+                                date_part = raw_date.split(" ")[0]
+                                from datetime import datetime
+                                dt = datetime.strptime(date_part, "%m/%d/%Y")
+                                invoice_date = dt.strftime("%d %b %Y")
+                            except:
+                                invoice_date = raw_date.split(" ")[0]
                     
                     # Find BilledOnInvoice1 (Total USD)
                     match = re.search(r'BilledOnInvoice1="([^"]*)"', xml_str)
