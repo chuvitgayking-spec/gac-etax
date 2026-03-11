@@ -1356,6 +1356,15 @@ def show_invoice_list():
                 item['description'] = new_desc
                 item['amount'] = new_amount
                 item['category'] = new_cat
+                
+                # Show VAT summary for this item
+                if new_cat == "PARTIAL_VAT" and new_amount > 0:
+                    st.caption(f"💰 Amount: ${new_amount:,.2f} | VAT: ฿{item.get('manual_vat', 0):,.2f} | Net: ฿{new_amount * exchange_rate - item.get('manual_vat', 0):,.2f}")
+                elif new_cat == "VAT_7" and new_amount > 0:
+                    vat_thb = new_amount * exchange_rate * 0.07
+                    st.caption(f"💰 Amount: ${new_amount:,.2f} | VAT 7%: ฿{vat_thb:,.2f} | Net: ฿{new_amount * exchange_rate - vat_thb:,.2f}")
+                elif new_cat == "NON_VAT" and new_amount > 0:
+                    st.caption(f"💰 Amount: ${new_amount:,.2f} | Non-VAT")
     
     # Navigation buttons
     st.markdown("---")
