@@ -151,7 +151,7 @@ def load_invoices_from_db():
                     if not match:
                         match = re.search(r'Textbox183=>([^<]*)', xml_str)
                     if match:
-                        invoice_no = match.group(1).strip()
+                        invoice_no = match.group(1).strip().lstrip(': ').replace(':', '')
                     
                     # Debug: print what we found
                     print(f"DEBUG: invoice_no = {invoice_no}")
@@ -159,22 +159,22 @@ def load_invoices_from_db():
                     # Find BillingPartyName
                     match = re.search(r'BillingPartyName="([^"]*)"', xml_str)
                     if match:
-                        customer_name = match.group(1).replace("Billing Party:", "").strip()
+                        customer_name = match.group(1).replace("Billing Party:", "").replace('&#13;', '').replace('&#10;', '').replace('\r\n', ' ').replace('\n', ' ').replace('\r', ' ').strip()
                     
                     # Find Textbox188 (Job No)
                     match = re.search(r'Textbox188="([^"]*)"', xml_str)
                     if match:
-                        job_number = match.group(1).strip().lstrip(": ")
+                        job_number = match.group(1).strip().lstrip(': ').replace(':', '')
                     
                     # Find Textbox65 (AWB)
                     match = re.search(r'Textbox65="([^"]*)"', xml_str)
                     if match:
-                        awb = match.group(1).strip().lstrip(": ")
+                        awb = match.group(1).strip().lstrip(': ').replace(':', '')
                     
                     # Find Textbox184 (Date)
                     match = re.search(r'Textbox184="([^"]*)"', xml_str)
                     if match:
-                        invoice_date = match.group(1).split(" ")[0].lstrip(": ")
+                        invoice_date = match.group(1).split(" ")[0].lstrip(': ').replace(':', '')
                     
                     # Find BilledOnInvoice1 (Total USD)
                     match = re.search(r'BilledOnInvoice1="([^"]*)"', xml_str)
