@@ -1436,8 +1436,9 @@ def show_invoice_list():
                 st.caption(f"  Item {idx+1}: {itm.get('description', 'N/A')} = {itm.get('amount', 0)}")
         else:
             st.caption("No items found in invoice!")
-        if items:
-            for j, item in enumerate(items):
+        # Show all items
+        st.write(f"**Total items: {len(items)}**")
+        for j, item in enumerate(items):
                 # Show all items without expander
                 col1, col2, col3 = st.columns([4, 2, 2])
                 with col1:
