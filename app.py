@@ -2077,27 +2077,65 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         gen_xml = st.checkbox("📄 e-Tax XML", value=False, key=f"xml{key_suffix}")
     
     if st.button("🎫 Generate & Download", type="primary", key=f"gen{key_suffix}"):
-        # Get running number
-        running_no = get_next_running_no()
+        # Check if already has running number
+        existing_running = invoice_data.get('receipt_running_no', '')
+        
+        if existing_running:
+            running_no = existing_running
+            st.info(f"📋 ใช้เลขเดิม: {running_no}")
+        else:
+            # Get new running number
+            running_no = get_next_receipt_no()
         
         invoice_data['running_no'] = running_no
-        invoice_data['file_source'] = invoice_data.get('filename', '')
+        invoice_data['receipt_running_no'] = running_no
+        invoice_data['receipt_date'] = datetime.now().strftime('%Y-%m-%d')
+        
+        # Calculate totals
+        subtotal = invoice_data.get('total_thb', 0) / 1.07
+        vat = invoice_data.get('total_thb', 0) - subtotal
+        
+        invoice_data['subtotal_thb'] = subtotal
+        invoice_data['vat_amount_thb'] = vat
         
         # Save to database
         save_invoice(invoice_data)
         
-        st.success(f"✅ Running No: {running_no}")
-        
-        # Generate outputs
+        # Generate PDF
+        pdf_bytes = None
         if gen_pdf:
             pdf_buffer = generate_pdf(invoice_data)
+            pdf_bytes = pdf_buffer.getvalue()
+            
+            # Save receipt with PDF blob
+            save_receipt_to_db(
+                invoice_data.get('invoice_no', ''),
+                running_no,
+                invoice_data['receipt_date'],
+                subtotal,
+                vat,
+                pdf_bytes
+            )
+            
             st.download_button(
                 "📥 Download PDF",
-                pdf_buffer.getvalue(),
+                pdf_bytes,
                 file_name=f"Receipt_{running_no}.pdf",
                 mime="application/pdf",
                 key=f"dl_pdf{key_suffix}"
             )
+        else:
+            # Just save without PDF
+            save_receipt_to_db(
+                invoice_data.get('invoice_no', ''),
+                running_no,
+                invoice_data['receipt_date'],
+                subtotal,
+                vat,
+                None
+            )
+        
+        st.success(f"✅ ออกใบเสร็จสำเร็จ! เลขที่: {running_no}")
         
         if gen_xml:
             xml_buffer = generate_xml(invoice_data)
@@ -2368,4 +2406,25 @@ def get_next_receipt_no():
         seq = 1
     
     return f"{year}-{seq:04d}"
+
+
+
+def save_receipt_to_db(invoice_no, receipt_running, receipt_date, subtotal_thb, vat_thb, pdf_bytes=None):
+    """Save receipt info and PDF blob to database"""
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute("""
+                UPDATE invoices 
+                SET receipt_running_no = ?, receipt_date = ?, 
+                    subtotal_thb = ?, vat_amount_thb = ?, 
+                    status = 'Issued',
+                    pdf_blob = ?
+                WHERE invoice_no = ?
+            """, (receipt_running, receipt_date, subtotal_thb, vat_thb, pdf_bytes, invoice_no))
+            conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error saving receipt: {e}")
+        return False
 
