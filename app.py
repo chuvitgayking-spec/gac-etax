@@ -2159,9 +2159,10 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     a4_html = f"""
     <div class="invoice-a4">
         <div class="invoice-header">
-            <div class="invoice-title">🧾 RECEIPT</div>
-            <div>GAC Thailand Co., Ltd.</div>
-            <div style="font-size:12px;color:#666;">26/30-31 9th Fl., Orakarn Bldg., Soi Chidlom, Bangkok 10300</div>
+            <div class="invoice-title">🧾 RECEIPT / TAX INVOICE</div>
+            <div style="font-size:16px;font-weight:bold;">Gulf Agency Company (Thailand) Ltd.</div>
+            <div style="font-size:12px;color:#666;">26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330</div>
+            <div style="font-size:11px;color:#888;">Tax ID: 0105535169497 | Tel: 02-650-7400</div>
         </div>
         <table class="invoice-table">
             <tr>
@@ -2181,8 +2182,10 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         
         <table class="invoice-table">
             <tr>
-                <th>รายการ</th>
-                <th style="text-align:right;">จำนวนเงิน</th>
+                <th>Description</th>
+                <th style="text-align:right;">NON VAT</th>
+                <th style="text-align:right;">VAT 7%</th>
+                <th style="text-align:right;">Amount (THB)</th>
             </tr>"""
     
     # Add items to HTML
@@ -2198,6 +2201,8 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
             a4_html += f"""
             <tr>
                 <td>{desc}</td>
+                <td style="text-align:right;">-</td>
+                <td style="text-align:right;">฿{amt*0.07:,.2f}</td>
                 <td style="text-align:right;">฿{amt:,.2f}</td>
             </tr>"""
     except:
@@ -2228,9 +2233,9 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         </div>
     </div>"""
     
-    st.markdown("<div class=\"invoice-preview-bg\">", unsafe_allow_html=True)
+    st.markdown('<div style="background-color: #f0f2f6; padding: 30px; display: flex; justify-content: center;">', unsafe_allow_html=True)
     st.components.v1.html(a4_html, height=1000, scrolling=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
