@@ -104,8 +104,8 @@ def generate_receipt_pdf(invoice_data):
     
     # Disclaimer
     pdf.set_font('helvetica', 'I', 7)
-    pdf.cell(0, 4, 'All business is subject to Standard Trading Conditions.', ln=1, align='C')
-    pdf.cell(0, 4, 'This receipt is not valid without signature.', ln=1, align='C')
+    pdf.cell(0, 4, 'All business is undertaken subject to our Standard Trading Conditions of Carriage, which are incorporated into all contracts of carriage to which we are a party.', ln=1, align='C')
+    pdf.cell(0, 4, 'This receipt is not valid unless signed by authorized person and collector. If payment is made by cheque, this receipt will be valid only when the cheque has been honoured.', ln=1, align='C')
     
     # Output
     buffer = BytesIO()
