@@ -316,7 +316,7 @@ def get_invoice_history(limit=50):
     conn.close()
     invoices = [dict(row) for row in rows]
     # Parse items_json for each invoice
-    for inv in invoices:
+    for inv in filtered_invoices:
         if inv.get('items_json'):
             try:
                 try:
@@ -1298,7 +1298,7 @@ def show_invoice_list():
     
     # Prepare data for dataframe with proper column widths
     table_data = []
-    for inv in invoices:
+    for inv in filtered_invoices:
         status = inv.get('status', 'pending')
         status_display_map = {
             'pending': '⏳ รอ',
@@ -1372,7 +1372,7 @@ def show_invoice_list():
     
     # Select invoice to edit
     options = []
-    for inv in invoices:
+    for inv in filtered_invoices:
         name = inv.get('customer_name', 'Unknown')
         addr = inv.get('customer_address', '')
         # Shorten address for display
