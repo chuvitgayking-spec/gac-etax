@@ -2080,7 +2080,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         pass
     
     html += '</table>'
-    html += '<div style="background:#eee;padding:15px;border-radius:5px;margin-top:20px;border:1px solid #333;">'
+    html += '<div style="background:transparent;padding:15px;margin-top:20px;">'
     html += '<table style="width:100%;"><tr><td><b>Subtotal:</b></td><td style="text-align:right;"><b>฿' + f"{total_thb-vat:,.2f}" + '</b></td></tr>'
     html += '<tr><td><b>VAT 7%:</b></td><td style="text-align:right;"><b>฿' + f"{vat:,.2f}" + '</b></td></tr>'
     html += '<tr style="font-size:18px;"><td><b>GRAND TOTAL:</b></td><td style="text-align:right;"><b style="color:#0066b2;">฿' + f"{total_thb:,.2f}" + '</b></td></tr></table>'
