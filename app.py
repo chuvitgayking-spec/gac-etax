@@ -2270,10 +2270,13 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     html += '</td>'
     html += '</tr></table>'
     
-    # Standard conditions
-    html += '<div style="margin-top:20px;font-size:9px;text-align:center;color:#666;">'
-    html += 'Standard Trading Conditions apply. Subject to Bangkok, Thailand jurisdiction.'
-    html += '</div>'
+    # Disclaimer / Standard conditions
+    html += '<div style="margin-top:30px;border-top:1px solid #ccc;padding-top:15px;">'
+    html += '<div style="font-size:8px;text-align:left;line-height:1.6;color:#333;">'
+    html += '<b>All business is undertaken subject to our Standard Trading Conditions of Carriage, which are incorporated into all contracts of carriage to which we are a party. Our Standard Trading Conditions are available from our offices on request.</b><br><br>'
+    html += '<b>ใบเสร็จรับเงินนี้จะสมบูรณ์ต่อเมื่อมีลายเซ็นของผู้มีอำนาจและพนักงานเก็บเงินของบริษัทฯ กรณีชำระด้วยเช็ค ใบเสร็จรับเงินนี้จะสมบูรณ์ต่อเมื่อบริษัทฯ ได้รับชำระเงินตามเช็คเรียบร้อยแล้ว</b><br><br>'
+    html += '<i>This receipt is not valid unless signed by authorized person and collector. If payment is made by cheque, this receipt will be valid only when the cheque has been honoured.</i>'
+    html += '</div></div>'
     
     html += '</div>'
     

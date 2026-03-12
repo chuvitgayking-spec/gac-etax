@@ -124,6 +124,13 @@ def generate_receipt_pdf(invoice_data):
     ]))
     elements.append(footer_table)
     
+    # Disclaimer / Standard conditions
+    elements.append(Spacer(1, 0.3*cm))
+    disc_style = ParagraphStyle('Disc', fontSize=7, alignment=0, spaceAfter=3)
+    elements.append(Paragraph("<b>All business is undertaken subject to our Standard Trading Conditions of Carriage, which are incorporated into all contracts of carriage to which we are a party.</b>", disc_style))
+    elements.append(Paragraph("<b>ใบเสร็จรับเงินนี้จะสมบูรณ์ต่อเมื่อมีลายเซ็นของผู้มีอำนาจและพนักงานเก็บเงินของบริษัทฯ</b>", disc_style))
+    elements.append(Paragraph("<i>This receipt is not valid unless signed by authorized person and collector.</i>", disc_style))
+    
     doc.build(elements)
     buffer.seek(0)
     return buffer
