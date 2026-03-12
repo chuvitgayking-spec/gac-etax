@@ -2389,6 +2389,15 @@ def run_etax_workflow(invoice_data: dict) -> dict:
 
 
 
+
+
+def get_next_receipt_no_fallback():
+    """Fallback function to generate receipt number"""
+    from datetime import datetime
+    year = datetime.now().year
+    return f"{year}-0001"
+
+
 def get_next_receipt_no():
     """Generate next receipt running number (YYYY-NNNN)"""
     from datetime import datetime
