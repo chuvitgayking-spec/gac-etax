@@ -2052,29 +2052,19 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     date = invoice_data.get('invoice_date', '')
     running = invoice_data.get('running_no', 'Draft')
     
-    # Build clean A4 HTML
-    a4_html = f"""
-<style>
-* { color: black !important; font-family: sans-serif; }
-@page { size: A4; margin: 0; }
-.inv-box {width:210mm;min-height:297mm;padding:20mm;margin:auto;background:#fff !important;box-shadow:0 0 10px rgba(0,0,0,0.1);box-sizing:border-box;position:relative;}
-.inv-title {font-size:24px;font-weight:bold;color:#0066b2;border-bottom:2px solid #0066b2;padding-bottom:10px;}
-.inv-table {width:100%;border-collapse:collapse;margin:15px 0;}
-.inv-table th {background:#eee;padding:8px;border:1px solid #333;text-align:left;}
-.inv-table td {padding:8px;border:1px solid #333;}
-.inv-total {background:#eee;padding:15px;border-radius:5px;margin-top:20px;border:1px solid #333;}
-</style>
-<div style="background-color:#f0f2f6;padding:30px 0;min-height:100vh;display:block;">
-<div class="inv-box">
-<div class="inv-title">RECEIPT / TAX INVOICE</div>
-<div style="font-weight:bold;margin-top:10px;">Gulf Agency Company (Thailand) Ltd.</div>
-<div style="font-size:12px;">26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330</div>
-<div style="font-size:11px;">Tax ID: 0105535169497 | Tel: 02-650-7400</div>
-<table class="inv-table"><tr><td><b>Receipt No:</b> {running}</td><td style="text-align:right;"><b>Date:</b> {date}</td></tr>
-<tr><td colspan="2"><b>Invoice No:</b> {invoice_no}</td></tr>
-<tr><td colspan="2"><b>Customer:</b> {customer}</td></tr>
-<tr><td colspan="2"><b>Address:</b> {address}</td></tr></table>
-<table class="inv-table"><tr><th>Description</th><th style="text-align:right;">NON VAT</th><th style="text-align:right;">VAT 7%</th><th style="text-align:right;">Amount</th></tr>"""
+    # Build A4 HTML with string concatenation
+    html = '<style>* { color: black !important; font-family: sans-serif; }</style>'
+    html += '<div style="background:#f0f2f6;padding:30px;min-height:100vh;">'
+    html += '<div style="width:210mm;min-height:297mm;padding:20mm;margin:auto;background:#fff;box-shadow:0 0 10px rgba(0,0,0,0.1);">'
+    html += '<div style="font-size:24px;font-weight:bold;color:#0066b2;border-bottom:2px solid #0066b2;padding-bottom:10px;">RECEIPT / TAX INVOICE</div>'
+    html += '<div style="font-weight:bold;margin-top:10px;">Gulf Agency Company (Thailand) Ltd.</div>'
+    html += '<div style="font-size:12px;">26/30-31 9th Floor, Orakarn Building, Bangkok 10330</div>'
+    html += '<div style="font-size:11px;">Tax ID: 0105535169497 | Tel: 02-650-7400</div>'
+    html += '<table style="width:100%;border-collapse:collapse;margin:15px 0;"><tr><td><b>Receipt No:</b> ' + str(running) + '</td><td style="text-align:right;"><b>Date:</b> ' + str(date) + '</td></tr>'
+    html += '<tr><td colspan="2"><b>Invoice No:</b> ' + str(invoice_no) + '</td></tr>'
+    html += '<tr><td colspan="2"><b>Customer:</b> ' + str(customer) + '</td></tr>'
+    html += '<tr><td colspan="2"><b>Address:</b> ' + str(address) + '</td></tr></table>'
+    html += '<table style="width:100%;border-collapse:collapse;margin:15px 0;"><tr><th>Description</th><th style="text-align:right;">NON VAT</th><th style="text-align:right;">VAT 7%</th><th style="text-align:right;">Amount</th></tr>'
     
     # Add items
     try:
@@ -2085,76 +2075,22 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         for item in items[:10]:
             desc = item.get('description', '-')[:40]
             amt = float(item.get('amount', 0))
-            a4_html += f"<tr><td>{desc}</td><td style=\"text-align:right;\">-</td><td style=\"text-align:right;\">฿{amt*0.07:,.2f}</td><td style=\"text-align:right;\">฿{amt:,.2f}</td></tr>"
+            html += '<tr><td>' + str(desc) + '</td><td style="text-align:right;">-</td><td style="text-align:right;">฿' + f"{amt*0.07:,.2f}" + '</td><td style="text-align:right;">฿' + f"{amt:,.2f}" + '</td></tr>'
     except:
         pass
     
-    a4_html += f"""
-</table>
-<div class="inv-total">
-<table style="width:100%;"><tr><td><b>Subtotal:</b></td><td style="text-align:right;"><b>฿{total_thb-vat:,.2f}</b></td></tr>
-<tr><td><b>VAT 7%:</b></td><td style="text-align:right;"><b>฿{vat:,.2f}</b></td></tr>
-<tr style="font-size:18px;"><td><b>GRAND TOTAL:</b></td><td style="text-align:right;"><b style="color:#0066b2;">฿{total_thb:,.2f}</b></td></tr></table>
-</div>
-<div style="text-align:center;margin-top:30px;font-size:12px;">Thank you for your business!</div>
-</div></div>"""
+    html += '</table>'
+    html += '<div style="background:#eee;padding:15px;border-radius:5px;margin-top:20px;border:1px solid #333;">'
+    html += '<table style="width:100%;"><tr><td><b>Subtotal:</b></td><td style="text-align:right;"><b>฿' + f"{total_thb-vat:,.2f}" + '</b></td></tr>'
+    html += '<tr><td><b>VAT 7%:</b></td><td style="text-align:right;"><b>฿' + f"{vat:,.2f}" + '</b></td></tr>'
+    html += '<tr style="font-size:18px;"><td><b>GRAND TOTAL:</b></td><td style="text-align:right;"><b style="color:#0066b2;">฿' + f"{total_thb:,.2f}" + '</b></td></tr></table>'
+    html += '</div>'
+    html += '<div style="text-align:center;margin-top:30px;font-size:12px;">Thank you for your business!</div>'
+    html += '</div></div>'
     
-    st.markdown(a4_html, unsafe_allow_html=True)
-    
-    # Generate buttons
-    st.markdown("### 🧾 ออกเอกสาร")
-    
-    # Preview PDF - show download link
-    try:
-        from pdf_generator import generate_receipt_pdf
-        pdf_buffer = generate_receipt_pdf(invoice_data)
-        pdf_bytes = pdf_buffer.getvalue()
-        
-        # Show preview info
-        st.info(f"📄 PDF Ready - {len(pdf_bytes)/1024:.1f} KB")
-        
-        # Download button instead
-    except Exception as e:
-        st.error(f"Error: {e}")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        gen_pdf = st.checkbox("📄 PDF", value=True, key=f"pdf{key_suffix}")
-    with col2:
-        gen_xml = st.checkbox("📄 e-Tax XML", value=False, key=f"xml{key_suffix}")
-    
-    if st.button("🎫 Generate & Download", type="primary", key=f"gen{key_suffix}"):
-        # Get running number
-        running_no = get_next_running_no()
-        
-        invoice_data['running_no'] = running_no
-        invoice_data['file_source'] = invoice_data.get('filename', '')
-        
-        # Save to database
-        save_invoice(invoice_data)
-        
-        st.success(f"✅ Running No: {running_no}")
-        
-        # Generate outputs
-        if gen_pdf:
-            pdf_buffer = generate_pdf(invoice_data)
-            st.download_button(
-                "📥 Download PDF",
-                pdf_buffer.getvalue(),
-                file_name=f"Receipt_{running_no}.pdf",
-                mime="application/pdf",
-                key=f"dl_pdf{key_suffix}"
-            )
-        
-        if gen_xml:
-            xml_buffer = generate_xml(invoice_data)
-            st.download_button(
-                "📥 Download XML",
-                xml_buffer.getvalue(),
-                file_name=f"ETax_{running_no}.xml",
-                mime="application/xml",
-                key=f"dl_xml{key_suffix}"
-            )
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def show_history():
     st.markdown('<p class="main-header">📊 Invoice History</p>', unsafe_allow_html=True)
     
