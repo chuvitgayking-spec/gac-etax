@@ -2402,7 +2402,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     st.markdown("---")
     st.markdown("### 🧾 ออกเอกสาร")
     
-    # PDF Preview - Direct download instead of inline
+    # PDF Download only (Chrome blocks inline PDF)
     st.info("💡 กดปุ่มด้านล่างเพื่อดาวน์โหลด PDF")
     
     # Download buttons
