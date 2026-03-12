@@ -2041,20 +2041,21 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     st.markdown("""
     <style>
     @page { size: A4; margin: 0; }
-    body { margin: 0; }
+    body { margin: 0; color: #000000 !important; }
     .invoice-preview-bg {
-        background: #f0f2f6;
-        padding: 20px;
+        background: #f0f2f6 !important;
+        padding: 30px !important;
         min-height: 100vh;
     }
     .invoice-a4 {
-        background: white;
+        background: #ffffff !important;
         width: 210mm;
         min-height: 297mm;
         padding: 20mm;
         margin: auto;
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         font-family: Arial, sans-serif;
+        color: #000000 !important;
         border-top: 4px solid #0066b2;
     }
     .invoice-header {
@@ -2065,7 +2066,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     .invoice-title {
         font-size: 28px;
         font-weight: bold;
-        color: #0066b2;
+        color: #0066b2 !important;
     }
     .invoice-logo {
         max-width: 150px;
@@ -2077,27 +2078,30 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         margin: 20px 0;
     }
     .invoice-table th {
-        background: #f0f2f6;
+        background: #e8e8e8 !important;
         padding: 12px;
         text-align: left;
-        border-bottom: 2px solid #0066b2;
+        border: 1px solid #333 !important;
+        color: #000000 !important;
     }
     .invoice-table td {
         padding: 10px;
-        border-bottom: 1px solid #eee;
+        border: 1px solid #333 !important;
+        color: #000000 !important;
     }
     .invoice-total {
-        background: #f0f2f6;
+        background: #e8e8e8 !important;
         padding: 20px;
         border-radius: 8px;
         margin-top: 30px;
-        position: relative;
+        border: 1px solid #333 !important;
+        color: #000000 !important;
     }
     .invoice-footer {
         position: relative;
         margin-top: 50px;
         text-align: center;
-        color: #888;
+        color: #666666 !important;
         font-size: 12px;
     }
     </style>
@@ -2160,7 +2164,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     <div class="invoice-a4">
         <div class="invoice-header">
             <div class="invoice-title">🧾 RECEIPT / TAX INVOICE</div>
-            <div style="font-size:16px;font-weight:bold;">Gulf Agency Company (Thailand) Ltd.</div>
+            <div style="font-size:16px;font-weight:bold;color:#000000;">Gulf Agency Company (Thailand) Ltd.</div>
             <div style="font-size:12px;color:#666;">26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330</div>
             <div style="font-size:11px;color:#888;">Tax ID: 0105535169497 | Tel: 02-650-7400</div>
         </div>
@@ -2228,7 +2232,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
             </table>
         </div>
         
-        <div style="text-align:center;margin-top:30px;font-size:12px;color:#888;">
+        <div style="text-align:center;margin-top:30px;font-size:12px;color:#666666;">
             Thank you for your business!
         </div>
     </div>"""
