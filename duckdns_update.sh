@@ -1,14 +1,14 @@
 #!/bin/bash
 # DuckDNS DDNS Update Script
 
-# Configuration
-DOMAIN="gac-etax"  # Your subdomain (without .duckdns.org)
-TOKEN="YOUR_DUCKDNS_TOKEN"  # Get from https://duckdns.org
+DOMAIN="gac-dom"
+TOKEN="5ee2399c-39a1-4428-ab32-b81240513291"
 
-# Get current public IP
+# Get current IP
 IP=$(curl -s ifconfig.me)
 
 # Update DuckDNS
 curl -s "https://www.duckdns.org/update?domains=${DOMAIN}&token=${TOKEN}&ip=${IP}"
 
-echo "Updated: $DOMAIN.duckdns.org -> $IP"
+echo ""
+echo "✅ Updated: gac-dom.duckdns.org -> $IP"

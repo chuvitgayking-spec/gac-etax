@@ -882,27 +882,6 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 def main():
-    # Login check
-    if 'logged_in' not in st.session_state:
-        st.session_state['logged_in'] = False
-    
-    if not st.session_state['logged_in']:
-        col1, col2, col3 = st.columns([1,2,1])
-        with col2:
-            st.markdown("## 🔐 GAC E-Tax Login")
-            with st.form("login"):
-                username = st.text_input("Username")
-                password = st.text_input("Password", type="password")
-                submit = st.form_submit_button("Login")
-                if submit:
-                    if username == "admin" and password == "gac2026":
-                        st.session_state['logged_in'] = True
-                        st.rerun()
-                    else:
-                        st.error("Invalid credentials")
-            st.info("Contact admin for access")
-        return
-    
     # Set page config for wide layout
     st.set_page_config(page_title="GAC E-Tax Invoice", page_icon="🏢", layout="wide")
     
