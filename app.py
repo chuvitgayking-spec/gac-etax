@@ -2402,21 +2402,8 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     st.markdown("---")
     st.markdown("### 🧾 ออกเอกสาร")
     
-    # PDF Preview toggle
-    show_pdf = st.checkbox("👁️ ดูตัวอย่าง PDF", key="pdf_preview_" + key_suffix)
-    
-    if show_pdf:
-        with st.spinner("กำลังสร้าง PDF..."):
-            try:
-                from pdf_generator import generate_receipt_pdf
-                import base64
-                pdf_buffer = generate_receipt_pdf(invoice_data)
-                pdf_bytes = pdf_buffer.getvalue()
-                b64 = base64.b64encode(pdf_bytes).decode()
-                pdf_display = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="500" type="application/pdf"></iframe>'
-                st.markdown(pdf_display, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error: {e}")
+    # PDF Preview - Direct download instead of inline
+    st.info("💡 กดปุ่มด้านล่างเพื่อดาวน์โหลด PDF")
     
     # Download buttons
     col1, col2 = st.columns(2)
