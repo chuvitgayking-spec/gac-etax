@@ -195,12 +195,59 @@ def get_db_connection():
     return conn
 
 def init_database():
-    """Initialize database tables"""
+    """Initialize database tables with migration support"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Drop old table if exists (to fix schema mismatch)
-    cursor.execute("DROP TABLE IF EXISTS invoices")
+    # Create tables if not exist (with proper migration)
+    try:
+        # Try to create invoices table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS invoices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                filename TEXT,
+                invoice_no TEXT,
+                invoice_date TEXT,
+                customer_name TEXT,
+                customer_address TEXT,
+                job_number TEXT,
+                awb TEXT,
+                job_ref TEXT,
+                exchange_rate REAL DEFAULT 1,
+                total_amount REAL,
+                total_thb REAL,
+                items_json TEXT,
+                status TEXT DEFAULT 'pending',
+                currency TEXT DEFAULT 'USD',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Migration: Add missing columns if table exists but missing columns
+        cursor.execute("PRAGMA table_info(invoices)")
+        existing_cols = [row[1] for row in cursor.fetchall()]
+        
+        migrations = {
+            'filename': 'TEXT',
+            'customer_address': 'TEXT',
+            'job_number': 'TEXT',
+            'awb': 'TEXT',
+            'job_ref': 'TEXT',
+            'exchange_rate': 'REAL DEFAULT 1',
+            'items_json': 'TEXT',
+            'status': "TEXT DEFAULT 'pending'",
+            'currency': "TEXT DEFAULT 'USD'"
+        }
+        
+        for col, col_type in migrations.items():
+            if col not in existing_cols:
+                try:
+                    cursor.execute(f"ALTER TABLE invoices ADD COLUMN {col} {col_type}")
+                except:
+                    pass  # Column might already exist
+        
+    except Exception as e:
+        print(f"Database init error: {e}")
     
     # Running number table
     cursor.execute('''
