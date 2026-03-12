@@ -2004,17 +2004,18 @@ def show_batch_preview():
 def show_single_invoice_preview(invoice_data, key_suffix=""):
     """Preview a single invoice with A4 styling"""
     
-    # Add A4 styling CSS
+    # Add GAC-style A4 CSS
     st.markdown("""
     <style>
     .invoice-a4 {
         background: white;
-        padding: 30px;
+        padding: 40px;
         border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        max-width: 800px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        max-width: 900px;
         margin: 20px auto;
-        font-family: 'Segoe UI', Arial, sans-serif;
+        font-family: Arial, sans-serif;
+        border-top: 4px solid #0066b2;
     }
     .invoice-header {
         border-bottom: 2px solid #0066b2;
