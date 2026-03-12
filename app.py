@@ -2092,7 +2092,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     st.markdown("### 🧾 ออกเอกสาร")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📥 Generate PDF", key="gen_pdf"):
+        if st.button("📥 Generate PDF", key="gen_pdf_preview"):
             try:
                 from pdf_generator import generate_receipt_pdf
                 pdf_buffer = generate_receipt_pdf(invoice_data)
@@ -2112,7 +2112,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     st.markdown("### 🧾 ออกเอกสาร")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📥 Generate PDF", key="gen_pdf"):
+        if st.button("📥 Generate PDF", key="gen_pdf_preview"):
             try:
                 from pdf_generator import generate_receipt_pdf
                 pdf_buffer = generate_receipt_pdf(invoice_data)
