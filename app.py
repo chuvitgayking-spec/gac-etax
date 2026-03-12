@@ -1647,6 +1647,7 @@ def recalculate_invoice(invoice):
     invoice['total_thb'] = (subtotal + vat_total) * rate
 
 def show_settings():
+    init_database()  # Ensure tables exist
     st.markdown('<p class="main-header">⚙️ Settings</p>', unsafe_allow_html=True)
     
     # Company Settings
