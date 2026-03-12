@@ -657,6 +657,9 @@ st.markdown("""<style>
 </style>""", unsafe_allow_html=True)
 
 def main():
+    # Set page config for wide layout
+    st.set_page_config(page_title="GAC E-Tax Invoice", page_icon="🏢", layout="wide")
+    
     st.sidebar.markdown("""
     <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #0066b2 0%, #00a3e0 100%); border-radius: 15px; margin-bottom: 20px;">
         <h2 style="color: white; margin: 0;">🏢 GACTH</h2>
@@ -1261,7 +1264,7 @@ def show_invoice_list():
     st.markdown(f"### 📋 รายการ Invoice ({len(invoices)} ใบ)")
     
     
-    # Show table with all invoices
+    # Show table with all invoices - enhanced
     data = []
     for i, inv in enumerate(invoices):
         status = inv.get('status', 'uploaded')
