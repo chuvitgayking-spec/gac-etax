@@ -2107,27 +2107,47 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
                 key=f"dl_xml{key_suffix}"
             )
 def show_history():
-    st.markdown('<p class="main-header">📊 Invoice History</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">📊 Invoice History (ประวัติการออกเอกสาร)</p>', unsafe_allow_html=True)
     
     history = get_invoice_history(50)
     
     if not history:
-        st.info("ยังไม่มีใบเสร็จที่ออก")
+        st.info("ไม่พบข้อมูลประวัติในระบบ")
         return
     
-    df = pd.DataFrame(history)
+    # Export buttons
+    col_exp, col_space1, col_space2 = st.columns([1, 2, 1])
+    with col_exp:
+        df = pd.DataFrame(history)
+        
+        # CSV Export
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            "📥 Export CSV",
+            csv,
+            "invoice_history.csv",
+            "text/csv",
+            use_container_width=True
+        )
     
+    # Metrics
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Invoices", len(df))
+        st.metric("📄 Total Invoices", len(df))
     with col2:
-        st.metric("Total (USD)", f"${df['total_amount'].sum():,.2f}")
+        total_usd = df['total_amount'].sum() if 'total_amount' in df.columns else 0
+        st.metric("💵 Total (USD)", f"${total_usd:,.2f}")
     with col3:
-        st.metric("Total (THB)", f"฿{df['total_thb'].sum():,.2f}")
+        total_thb = df['total_thb'].sum() if 'total_thb' in df.columns else 0
+        st.metric("💰 Total (THB)", f"฿{total_thb:,.2f}")
     
-    cols = [c for c in ['running_no', 'invoice_no', 'customer_name', 'invoice_date', 'total_amount', 'total_thb'] if c in df.columns]
+    st.markdown("### 📋 รายละเอียด")
+    
+    # Select columns to display
+    cols = [c for c in ['running_no', 'invoice_no', 'customer_name', 'invoice_date', 'total_amount', 'total_thb', 'status'] if c in df.columns]
+    
     if cols:
-        st.dataframe(df[cols], use_container_width=True)
+        st.dataframe(df[cols], use_container_width=True, hide_index=True)
     else:
         st.dataframe(df, use_container_width=True)
 
