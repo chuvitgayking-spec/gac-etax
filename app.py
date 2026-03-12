@@ -2023,11 +2023,31 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     
     # Items table
     st.markdown("#### รายการ")
-    df = pd.DataFrame(invoice_data.get('items', []))
-    if not df.empty:
-        st.dataframe(df[['item_no', 'description', 'amount', 'vat_rate', 'vat_amount']], use_container_width=True)
-    else:
+    items_list = invoice_data.get('items', [])
+    if not items_list:
         st.info('ไม่มีรายการสินค้า')
+    else:
+        # Normalize keys - map common variations
+        normalized_items = []
+        for item in items_list:
+            normalized_item = {
+                'item_no': item.get('item_no', item.get('id', '')),
+                'description': item.get('description', item.get('desc', item.get('name', ''))),
+                'amount': float(item.get('amount', item.get('net_amount', 0))),
+                'vat_rate': float(item.get('vat_rate', item.get('vat', 0))),
+                'vat_amount': float(item.get('vat_amount', item.get('vat', 0)))
+            }
+            normalized_items.append(normalized_item)
+        
+        df = pd.DataFrame(normalized_items)
+        
+        # Dynamic column selection
+        cols_to_show = [c for c in ['item_no', 'description', 'amount', 'vat_rate', 'vat_amount'] if c in df.columns]
+        
+        if cols_to_show:
+            st.dataframe(df[cols_to_show], use_container_width=True)
+        else:
+            st.dataframe(df, use_container_width=True)
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
