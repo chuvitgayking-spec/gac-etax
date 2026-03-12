@@ -204,9 +204,6 @@ def get_db_connection():
 def init_database():
     """Initialize database tables with defensive migration"""
     import traceback
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
     
     # Expected columns (14 + id + created_at)
     EXPECTED_COLS = [
@@ -216,6 +213,10 @@ def init_database():
     ]
     
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if table exists and has correct schema
         # Check if table exists and has correct schema
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invoices'")
         table_exists = cursor.fetchone() is not None
