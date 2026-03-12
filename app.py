@@ -2041,22 +2041,21 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     st.markdown("""
     <style>
     @page { size: A4; margin: 0; }
-    body { margin: 0; color: #000000 !important; }
-    .invoice-preview-bg {
-        background: #f0f2f6 !important;
-        padding: 30px !important;
-        min-height: 100vh;
+    * { color: #000000 !important; }
+    body { margin: 0; }
+    .invoice-wrapper {
+        background-color: #f0f2f6;
+        padding: 40px 0;
+        display: flex;
+        justify-content: center;
     }
-    .invoice-a4 {
-        background: #ffffff !important;
+    .invoice-box {
         width: 210mm;
         min-height: 297mm;
         padding: 20mm;
         margin: auto;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        font-family: Arial, sans-serif;
-        color: #000000 !important;
-        border-top: 4px solid #0066b2;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        background: #ffffff !important;
     }
     .invoice-header {
         border-bottom: 2px solid #0066b2;
@@ -2068,41 +2067,27 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         font-weight: bold;
         color: #0066b2 !important;
     }
-    .invoice-logo {
-        max-width: 150px;
-        height: auto;
-    }
     .invoice-table {
         width: 100%;
         border-collapse: collapse;
         margin: 20px 0;
     }
     .invoice-table th {
-        background: #e8e8e8 !important;
+        background: #e8e8e8;
         padding: 12px;
         text-align: left;
-        border: 1px solid #333 !important;
-        color: #000000 !important;
+        border: 1px solid #333;
     }
     .invoice-table td {
         padding: 10px;
-        border: 1px solid #333 !important;
-        color: #000000 !important;
+        border: 1px solid #333;
     }
     .invoice-total {
-        background: #e8e8e8 !important;
+        background: #e8e8e8;
         padding: 20px;
         border-radius: 8px;
         margin-top: 30px;
-        border: 1px solid #333 !important;
-        color: #000000 !important;
-    }
-    .invoice-footer {
-        position: relative;
-        margin-top: 50px;
-        text-align: center;
-        color: #666666 !important;
-        font-size: 12px;
+        border: 1px solid #333;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -2161,7 +2146,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     
     # Build A4 HTML
     a4_html = f"""
-    <div class="invoice-a4">
+    <div class="invoice-box">
         <div class="invoice-header">
             <div class="invoice-title">🧾 RECEIPT / TAX INVOICE</div>
             <div style="font-size:16px;font-weight:bold;color:#000000;">Gulf Agency Company (Thailand) Ltd.</div>
@@ -2237,9 +2222,9 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         </div>
     </div>"""
     
-    st.markdown('<div style="background-color: #f0f2f6; padding: 30px; display: flex; justify-content: center;">', unsafe_allow_html=True)
+    st.markdown('<div class="invoice-wrapper">', unsafe_allow_html=True)
     st.components.v1.html(a4_html, height=1000, scrolling=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div><br>', unsafe_allow_html=True)
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
