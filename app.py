@@ -247,26 +247,30 @@ def init_database():
 
 def get_next_running_no():
     """Get next running number"""
-    import sqlite3
     from datetime import datetime
     
     year_short = str(datetime.now().year)[-2:]
     
-    conn = sqlite3.connect(INVOICE_DB)
-    c = conn.cursor()
-    
     try:
-        c.execute(f"SELECT running_no FROM invoices WHERE running_no LIKE '{year_short}-%' ORDER BY id DESC LIMIT 1")
-        row = c.fetchone()
-    except:
-        row = None
-    
-    conn.close()
-    
-    if row:
-        last_no = row[0]
-        seq = int(last_no.split('-')[1]) + 1
-    else:
+        # Try to initialize database first
+        try:
+            init_database()
+        except:
+            pass
+        
+        # Use context manager for thread-safe connection
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute(f"SELECT running_no FROM invoices WHERE running_no LIKE '{year_short}-%' ORDER BY id DESC LIMIT 1")
+            row = c.fetchone()
+        
+        if row and row[0]:
+            last_no = row[0]
+            seq = int(last_no.split('-')[1]) + 1
+        else:
+            seq = 1
+    except Exception as e:
+        # Return default on error
         seq = 1
     
     return f"{year_short}-{seq:04d}"
