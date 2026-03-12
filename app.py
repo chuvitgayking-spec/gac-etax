@@ -882,37 +882,56 @@ def show_upload():
             with col1:
                 if st.button("✅ ยืนยันบันทึก", key="confirm_save"):
                     # Save to database
+                    # Ensure database is initialized
+                    init_database()
+                    
                     conn = sqlite3.connect(DB_PATH)
                     cursor = conn.cursor()
                     saved = 0
+                    errors = []
                     for inv in st.session_state.get('pending_invoices', []):
                         if not inv:
                             continue
-                        items_json = json.dumps(inv.get('items', []))
                         try:
+                            items = inv.get('items', [])
+                            items_json = json.dumps(items) if isinstance(items, list) else '[]'
+                            
                             values = (
-                                inv.get('filename', ''),
-                                inv.get('invoice_no', ''),
-                                inv.get('invoice_date', ''),
-                                inv.get('customer_name', ''),
-                                inv.get('customer_address', ''),
-                                inv.get('job_number', ''),
-                                inv.get('awb', ''),
-                                inv.get('job_ref', ''),
-                                inv.get('exchange_rate', 1),
-                                inv.get('total_amount', 0),
-                                inv.get('total_thb', 0),
+                                str(inv.get('filename', '')),
+                                str(inv.get('invoice_no', '')),
+                                str(inv.get('invoice_date', '')),
+                                str(inv.get('customer_name', '')),
+                                str(inv.get('customer_address', '')),
+                                str(inv.get('job_number', '')),
+                                str(inv.get('awb', '')),
+                                str(inv.get('job_ref', '')),
+                                float(inv.get('exchange_rate', 1)),
+                                float(inv.get('total_amount', 0)),
+                                float(inv.get('total_thb', 0)),
                                 items_json,
                                 'uploaded',
-                                inv.get('currency', 'USD')
+                                str(inv.get('currency', 'USD'))
                             )
                             cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", values)
+                            saved += 1
                         except Exception as insert_err:
-                            st.error(f"Insert error: {insert_err}")
+                            errors.append(str(insert_err))
                             continue
-                        saved += 1
                     conn.commit()
+                    
+                    # Check saved
+                    cursor.execute('SELECT COUNT(*) FROM invoices')
+                    total = cursor.fetchone()[0]
                     conn.close()
+                    
+                    if errors:
+                        st.error(f"Errors: {errors}")
+                    if saved > 0:
+                        st.success(f"✅ บันทึก {saved} ใบสำเร็จ! (Total in DB: {total})")
+                        st.session_state.pop('pending_invoices', None)
+                        st.rerun()
+                    else:
+                        st.error(f"❌ ไม่สามารถบันทึกได้: {errors}")
                     st.session_state.pop('pending_invoices', None)
                     st.success(f"✅ บันทึก {saved} ใบสำเร็จ! (Status: อัปโหลดแล้ว)")
                     st.rerun()
