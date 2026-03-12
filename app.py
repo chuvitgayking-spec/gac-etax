@@ -315,14 +315,16 @@ def get_invoice_history(limit=50):
     rows = cursor.fetchall()
     conn.close()
     invoices = [dict(row) for row in rows]
+    
+    # Handle empty case
+    if not invoices:
+        return invoices
+    
     # Parse items_json for each invoice
-    for inv in filtered_invoices:
+    for inv in invoices:
         if inv.get('items_json'):
             try:
-                try:
-                    inv['items'] = json.loads(inv['items_json']) if inv.get('items_json') else []
-                except:
-                    inv['items'] = []
+                inv['items'] = json.loads(inv['items_json']) if inv.get('items_json') else []
             except:
                 inv['items'] = []
         else:
