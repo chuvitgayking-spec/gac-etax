@@ -1,13 +1,9 @@
-from fpdf import FPDF
+import weasyprint
 from io import BytesIO
 
 def generate_receipt_pdf(invoice_data):
-    """Generate PDF matching the preview exactly"""
-    pdf = FPDF(format='A4', unit='mm')
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # Get values
+    """Generate PDF using HTML template - exact match with preview"""
+    # Build HTML inline (same as get_unified_receipt_html in app.py)
     subtotal = float(invoice_data.get('total_amount', 0) or 0)
     exchange_rate = float(invoice_data.get('exchange_rate', 1) or 1)
     total_thb = float(invoice_data.get('total_thb', 0) or 0)
@@ -16,102 +12,79 @@ def generate_receipt_pdf(invoice_data):
     vat = total_thb - (total_thb / 1.07)
     
     invoice_no = invoice_data.get('invoice_no', '-')
-    customer = invoice_data.get('customer_name', 'Customer')[:50]
-    address = invoice_data.get('customer_address', '')[:60]
+    customer = invoice_data.get('customer_name', 'Customer')
+    address = invoice_data.get('customer_address', '')[:80]
     date = invoice_data.get('invoice_date', '')
     running = invoice_data.get('running_no', 'Draft')
     
-    # ===== HEADER =====
-    pdf.set_font('helvetica', 'B', 11)
-    pdf.cell(95, 5, 'Tax ID No. 0105535169497', ln=0)
-    pdf.set_font('helvetica', 'B', 12)
-    pdf.cell(95, 5, 'GULF AGENCY COMPANY (THAILAND) LTD.', ln=1, align='R')
+    # Build HTML exactly like preview
+    html = '''<div style="width:100%;padding:15mm;background:#fff;font-family:Arial,sans-serif;font-size:11px;color:#000;">'''
     
-    pdf.set_font('helvetica', '', 8)
-    pdf.cell(95, 4, 'Registration No. 0105535169497', ln=0)
-    pdf.cell(95, 4, '26/30-31 9th Floor, Orakarn Building', ln=1, align='R')
-    pdf.cell(95, 4, '', ln=0)
-    pdf.cell(95, 4, 'Soi Chidlom, Bangkok 10330', ln=1, align='R')
-    pdf.cell(95, 4, '', ln=0)
-    pdf.cell(95, 4, 'Tel: 02-650-7400', ln=1, align='R')
-    pdf.ln(5)
+    # Header
+    html += '''<table style="width:100%;margin-bottom:10px;"><tr>'''
+    html += '''<td style="width:50%;vertical-align:top;"><div style="font-weight:bold;">Tax ID No. 0105535169497</div><div>Registration No. 0105535169497</div></td>'''
+    html += '''<td style="width:50%;text-align:right;vertical-align:top;"><div style="font-size:18px;font-weight:bold;color:#0066b2;">GULF AGENCY COMPANY (THAILAND) LTD.</div><div>26/30-31 9th Floor, Orakarn Building</div><div>Soi Chidlom, Bangkok 10330</div><div>Tel: 02-650-7400</div></td>'''
+    html += '''</tr></table>'''
     
-    # ===== TITLE =====
-    pdf.set_font('helvetica', 'B', 16)
-    pdf.cell(0, 10, 'RECEIPT COPY / TAX INVOICE COPY', ln=1, align='C')
-    pdf.ln(5)
+    # Title
+    html += '<div style="text-align:center;font-size:18px;font-weight:bold;padding:10px;border:2px solid #000;margin:15px 0;">RECEIPT COPY / TAX INVOICE COPY</div>'
     
-    # ===== CUSTOMER INFO =====
-    pdf.set_font('helvetica', 'B', 9)
-    pdf.cell(95, 5, 'Customer Name:', ln=1)
-    pdf.set_font('helvetica', '', 9)
-    pdf.cell(95, 5, customer, ln=1)
-    if len(address) > 50:
-        pdf.cell(95, 5, address[:50], ln=1)
-        pdf.cell(95, 5, address[50:], ln=1)
-    else:
-        pdf.cell(95, 5, address, ln=1)
+    # Customer
+    html += '''<table style="width:100%;margin-bottom:15px;border:1px solid #000;"><tr>'''
+    html += '''<td style="width:50%;padding:10px;border:1px solid #000;"><div style="font-weight:bold;">Customer Name:</div><div>''' + str(customer) + '''</div><div>''' + str(address)[:60] + '''</div></td>'''
+    html += '''<td style="width:50%;padding:10px;border:1px solid #000;"><div><b>No:</b> ''' + str(running) + '''</div><div><b>Date:</b> ''' + str(date) + '''</div><div><b>Invoice No:</b> ''' + str(invoice_no) + '''</div></td>'''
+    html += '''</tr></table>'''
     
-    pdf.set_xy(110, pdf.get_y() - 15)
-    pdf.cell(45, 5, f'No: {running}', ln=1)
-    pdf.cell(45, 5, f'Date: {date}', ln=1)
-    pdf.cell(45, 5, f'Invoice No: {invoice_no}', ln=1)
-    pdf.ln(5)
+    # Items header
+    html += '''<table style="width:100%;margin-bottom:15px;border:1px solid #000;border-collapse:collapse;">'''
+    html += '''<tr style="background:#eee;"><th style="padding:8px;border:1px solid #000;text-align:center;">Description</th><th style="padding:8px;border:1px solid #000;text-align:right;">Amount</th><th style="padding:8px;border:1px solid #000;text-align:right;">VAT 7%</th><th style="padding:8px;border:1px solid #000;text-align:right;">Total</th></tr>'''
     
-    # ===== ITEMS TABLE =====
-    pdf.set_font('helvetica', 'B', 9)
-    pdf.set_fill_color(220, 220, 220)
-    pdf.cell(100, 8, 'Description', 1, 0, 'C', 1)
-    pdf.cell(30, 8, 'Amount', 1, 0, 'R', 1)
-    pdf.cell(30, 8, 'VAT 7%', 1, 0, 'R', 1)
-    pdf.cell(30, 8, 'Total', 1, 1, 'R', 1)
+    # Items
+    try:
+        items = invoice_data.get('items', [])
+        if not items and invoice_data.get('items_json'):
+            import json
+            items = json.loads(invoice_data.get('items_json', '[]'))
+        for item in items[:15]:
+            desc = item.get('description', '-')[:45]
+            amt = float(item.get('amount', 0))
+            item_vat = amt * 0.07
+            html += f'''<tr><td style="padding:6px;border:1px solid #000;">{desc}</td>
+            <td style="padding:6px;border:1px solid #000;text-align:right;">{amt:,.2f}</td>
+            <td style="padding:6px;border:1px solid #000;text-align:right;">{item_vat:,.2f}</td>
+            <td style="padding:6px;border:1px solid #000;text-align:right;">{amt:,.2f}</td></tr>'''
+    except:
+        pass
     
-    pdf.set_font('helvetica', '', 8)
-    items = invoice_data.get('items', [])
-    if not items:
-        items = [{'description': 'Service Charges', 'amount': 0}]
+    html += '</table>'
     
-    for item in items[:15]:
-        desc = item.get('description', '-')[:45]
-        amt = float(item.get('amount', 0))
-        item_vat = amt * 0.07
-        pdf.cell(100, 7, desc[:45], 1)
-        pdf.cell(30, 7, f'{amt:,.2f}', 1, 0, 'R')
-        pdf.cell(30, 7, f'{item_vat:,.2f}', 1, 0, 'R')
-        pdf.cell(30, 7, f'{amt:,.2f}', 1, 1, 'R')
+    # Totals
+    html += f'''<table style="width:50%;margin-left:auto;">
+    <tr><td style="padding:8px;text-align:right;">Subtotal:</td><td style="padding:8px;text-align:right;border:1px solid #000;">{total_thb-vat:,.2f}</td></tr>
+    <tr><td style="padding:8px;text-align:right;">VAT 7%:</td><td style="padding:8px;text-align:right;border:1px solid #000;">{vat:,.2f}</td></tr>
+    <tr><td style="padding:10px;text-align:right;font-size:14px;">GRAND TOTAL:</td><td style="padding:10px;text-align:right;border:2px solid #000;font-size:14px;font-weight:bold;">{total_thb:,.2f}</td></tr>
+    </table>'''
     
-    # ===== TOTALS =====
-    pdf.set_font('helvetica', 'B', 10)
-    pdf.cell(130, 8, 'Subtotal:', 0, 0, 'R')
-    pdf.cell(30, 8, f'{total_thb - vat:,.2f}', 1, 1, 'R')
-    pdf.cell(130, 8, 'VAT 7%:', 0, 0, 'R')
-    pdf.cell(30, 8, f'{vat:,.2f}', 1, 1, 'R')
-    pdf.set_font('helvetica', 'B', 12)
-    pdf.cell(130, 10, 'GRAND TOTAL:', 0, 0, 'R')
-    pdf.cell(30, 10, f'{total_thb:,.2f}', 1, 1, 'R')
-    pdf.ln(5)
+    # Footer
+    html += '''<table style="width:100%;margin-top:30px;"><tr>'''
+    html += '''<td style="width:50%;padding:10px;border:1px dashed #888;"><div><b>Payment Method:</b> Cash / Credit / Cheque</div><div>Bank: Bangkok Bank | A/C: 123-456-7890</div></td>'''
+    html += '''<td style="width:50%;padding:10px;text-align:center;"><div style="border-top:1px solid #000;padding-top:5px;">Bill Collector</div><div style="height:20px;"></div><div style="border-top:1px solid #000;padding-top:5px;">Accountant</div></td>'''
+    html += '''</tr></table>'''
     
-    # ===== FOOTER =====
-    pdf.set_font('helvetica', '', 9)
-    pdf.cell(95, 8, 'Payment Method: Cash / Credit / Cheque', 1, 0)
-    pdf.cell(95, 8, '', 0, 1)
-    pdf.cell(95, 4, 'Bank: Bangkok Bank | A/C: 123-456-7890', 0, 0)
-    pdf.cell(95, 8, '________________________', 0, 1, 'R')
-    pdf.cell(95, 4, '', 0, 0)
-    pdf.cell(95, 4, 'Bill Collector', 0, 1, 'R')
-    pdf.cell(95, 8, '', 0, 0)
-    pdf.cell(95, 8, '________________________', 0, 1, 'R')
-    pdf.cell(95, 4, '', 0, 0)
-    pdf.cell(95, 4, 'Accountant', 0, 1, 'R')
-    pdf.ln(10)
+    # Disclaimer
+    html += '''<div style="margin-top:30px;border-top:1px solid #ccc;padding-top:15px;font-size:8px;text-align:center;">'''
+    html += '''All business is undertaken subject to our Standard Trading Conditions.<br>'''
+    html += '''This receipt is not valid unless signed by authorized person and collector.'''
+    html += '''</div>'''
     
-    # ===== DISCLAIMER =====
-    pdf.set_font('helvetica', 'I', 7)
-    pdf.cell(0, 4, 'All business is undertaken subject to our Standard Trading Conditions.', ln=1, align='C')
-    pdf.cell(0, 4, 'This receipt is not valid unless signed by authorized person and collector.', ln=1, align='C')
+    html += '</div>'
     
-    # Output
-    buffer = BytesIO()
-    buffer.write(pdf.output())
+    # Full HTML
+    full_html = f'''<!DOCTYPE html><html><head><meta charset="UTF-8"><style>@page {{ size: A4; margin: 0; }}</style></head><body>{html}</body></html>'''
+    
+    # Convert to PDF using weasyprint
+    pdf = weasyprint.HTML(string=full_html).write_pdf()
+    
+    buffer = BytesIO(pdf)
     buffer.seek(0)
     return buffer
