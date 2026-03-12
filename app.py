@@ -1532,7 +1532,7 @@ def show_invoice_list():
             st.rerun()
     with col2:
         if st.button("👁️ ไป Preview", key="btn_go_preview"):
-            st.session_state['batch_invoices'] = invoices
+            st.session_state['batch_invoices'] = filtered_invoices
             st.session_state['menu'] = '👁️ Preview'
             st.rerun()
     # E-Tax Workflow Section
