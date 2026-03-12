@@ -2056,6 +2056,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     a4_html = f"""
 <style>
 * { color: black !important; font-family: sans-serif; }
+@page { size: A4; margin: 0; }
 .inv-box {width:210mm;min-height:297mm;padding:20mm;margin:auto;background:#fff !important;box-shadow:0 0 10px rgba(0,0,0,0.1);box-sizing:border-box;position:relative;}
 .inv-title {font-size:24px;font-weight:bold;color:#0066b2;border-bottom:2px solid #0066b2;padding-bottom:10px;}
 .inv-table {width:100%;border-collapse:collapse;margin:15px 0;}
