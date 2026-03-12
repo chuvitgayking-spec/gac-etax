@@ -2,10 +2,18 @@ from fpdf import FPDF
 from io import BytesIO
 
 def generate_receipt_pdf(invoice_data):
-    """Generate PDF"""
+    """Generate PDF with Thai font support"""
     pdf = FPDF(format='A4', unit='mm')
     pdf.add_page()
     
+    # Add Thai font
+    try:
+        pdf.add_font('NotoSans', '', '/Users/chuvit/Library/Fonts/NotoSansThai[wdth,wght].ttf', uni=True)
+        pdf.set_font('NotoSans', size=10)
+    except:
+        pdf.set_font('helvetica', size=10)
+    
+    # Get values
     subtotal = float(invoice_data.get('total_amount', 0) or 0)
     exchange_rate = float(invoice_data.get('exchange_rate', 1) or 1)
     total_thb = float(invoice_data.get('total_thb', 0) or 0)
@@ -20,11 +28,21 @@ def generate_receipt_pdf(invoice_data):
     running = invoice_data.get('running_no', 'Draft')
     
     # Header
-    pdf.set_font('helvetica', 'B', 10)
+    try:
+        pdf.set_font('NotoSans', 'B', 10)
+    except:
+        pdf.set_font('helvetica', 'B', 10)
     pdf.cell(90, 5, 'Tax ID No. 0105535169497', ln=0)
-    pdf.set_font('helvetica', 'B', 12)
+    try:
+        pdf.set_font('NotoSans', 'B', 12)
+    except:
+        pdf.set_font('helvetica', 'B', 12)
     pdf.cell(90, 5, 'GULF AGENCY COMPANY (THAILAND) LTD.', ln=1, align='R')
-    pdf.set_font('helvetica', '', 8)
+    
+    try:
+        pdf.set_font('NotoSans', size=8)
+    except:
+        pdf.set_font('helvetica', size=8)
     pdf.cell(90, 4, 'Registration No. 0105535169497', ln=0)
     pdf.cell(90, 4, '26/30-31 9th Floor, Orakarn Building', ln=1, align='R')
     pdf.cell(90, 4, '', ln=0)
@@ -34,14 +52,23 @@ def generate_receipt_pdf(invoice_data):
     pdf.ln(5)
     
     # Title
-    pdf.set_font('helvetica', 'B', 16)
+    try:
+        pdf.set_font('NotoSans', 'B', 16)
+    except:
+        pdf.set_font('helvetica', 'B', 16)
     pdf.cell(0, 10, 'RECEIPT COPY / TAX INVOICE COPY', ln=1, align='C')
     pdf.ln(5)
     
     # Customer
-    pdf.set_font('helvetica', 'B', 9)
+    try:
+        pdf.set_font('NotoSans', 'B', 9)
+    except:
+        pdf.set_font('helvetica', 'B', 9)
     pdf.cell(95, 5, 'Customer Name:', ln=1)
-    pdf.set_font('helvetica', '', 9)
+    try:
+        pdf.set_font('NotoSans', size=9)
+    except:
+        pdf.set_font('helvetica', size=9)
     pdf.cell(95, 5, customer[:50], ln=1)
     pdf.cell(95, 5, address[:50], ln=1)
     
@@ -52,7 +79,10 @@ def generate_receipt_pdf(invoice_data):
     pdf.ln(5)
     
     # Items Header
-    pdf.set_font('helvetica', 'B', 9)
+    try:
+        pdf.set_font('NotoSans', 'B', 9)
+    except:
+        pdf.set_font('helvetica', 'B', 9)
     pdf.set_fill_color(220, 220, 220)
     pdf.cell(100, 8, 'Description', 1, 0, 'C', 1)
     pdf.cell(30, 8, 'Amount', 1, 0, 'R', 1)
@@ -60,7 +90,10 @@ def generate_receipt_pdf(invoice_data):
     pdf.cell(30, 8, 'Total', 1, 1, 'R', 1)
     
     # Items
-    pdf.set_font('helvetica', '', 8)
+    try:
+        pdf.set_font('NotoSans', size=8)
+    except:
+        pdf.set_font('helvetica', size=8)
     items = invoice_data.get('items', [])
     if not items:
         items = [{'description': 'Service Charges', 'amount': 0}]
@@ -75,18 +108,27 @@ def generate_receipt_pdf(invoice_data):
         pdf.cell(30, 7, f'{amt:,.2f}', 1, 1, 'R')
     
     # Totals
-    pdf.set_font('helvetica', 'B', 10)
+    try:
+        pdf.set_font('NotoSans', 'B', 10)
+    except:
+        pdf.set_font('helvetica', 'B', 10)
     pdf.cell(130, 8, 'Subtotal:', 0, 0, 'R')
     pdf.cell(30, 8, f'{total_thb - vat:,.2f}', 1, 1, 'R')
     pdf.cell(130, 8, 'VAT 7%:', 0, 0, 'R')
     pdf.cell(30, 8, f'{vat:,.2f}', 1, 1, 'R')
-    pdf.set_font('helvetica', 'B', 12)
+    try:
+        pdf.set_font('NotoSans', 'B', 12)
+    except:
+        pdf.set_font('helvetica', 'B', 12)
     pdf.cell(130, 10, 'GRAND TOTAL:', 0, 0, 'R')
     pdf.cell(30, 10, f'{total_thb:,.2f}', 1, 1, 'R')
     pdf.ln(5)
     
     # Footer
-    pdf.set_font('helvetica', '', 9)
+    try:
+        pdf.set_font('NotoSans', size=9)
+    except:
+        pdf.set_font('helvetica', size=9)
     pdf.cell(95, 8, 'Payment: Cash / Credit / Cheque', 1, 0)
     pdf.cell(95, 8, '', 0, 1)
     pdf.cell(95, 4, 'Bank: Bangkok Bank | A/C: 123-456-7890', 0, 0)
@@ -100,7 +142,10 @@ def generate_receipt_pdf(invoice_data):
     pdf.ln(10)
     
     # Disclaimer
-    pdf.set_font('helvetica', 'I', 7)
+    try:
+        pdf.set_font('NotoSans', 'I', 7)
+    except:
+        pdf.set_font('helvetica', 'I', 7)
     pdf.cell(0, 4, 'All business is undertaken subject to our Standard Trading Conditions.', ln=1, align='C')
     pdf.cell(0, 4, 'This receipt is not valid unless signed by authorized person and collector.', ln=1, align='C')
     
