@@ -2054,8 +2054,8 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     
     # Build A4 HTML with string concatenation
     html = '<style>* { color: black !important; font-family: sans-serif; }</style>'
-    html += '<div style="background:#f0f2f6;padding:30px;min-height:100vh;">'
-    html += '<div style="width:210mm;min-height:297mm;padding:20mm;margin:auto;background:#fff;box-shadow:0 0 10px rgba(0,0,0,0.1);">'
+    html += '<div style="background:transparent;padding:30px;min-height:100vh;">'
+    html += '<div style="width:210mm;min-height:297mm;padding:20mm;margin:auto;background:transparent;box-shadow:0 0 10px rgba(0,0,0,0.1);">'
     html += '<div style="font-size:24px;font-weight:bold;color:#0066b2;border-bottom:2px solid #0066b2;padding-bottom:10px;">RECEIPT / TAX INVOICE</div>'
     html += '<div style="font-weight:bold;margin-top:10px;">Gulf Agency Company (Thailand) Ltd.</div>'
     html += '<div style="font-size:12px;">26/30-31 9th Floor, Orakarn Building, Bangkok 10330</div>'
