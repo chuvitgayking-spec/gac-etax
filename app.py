@@ -53,11 +53,11 @@ IS_CLOUD = os.environ.get('STREAMLIT_SHARED') is not None or os.path.exists('/mo
 # Use cloud path on Streamlit Cloud, local path otherwise
 if IS_CLOUD or platform.system() != 'Darwin':
     # Cloud deployment
-    DEFAULT_DB = '/tmp/gac_etax_v2.db'
+    DEFAULT_DB = '/tmp/gac_etax_v3.db'
     DEFAULT_UPLOAD = '/tmp/uploads'
 else:
     # Local Mac deployment
-    DEFAULT_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'gac_etax_v2.db')
+    DEFAULT_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'gac_etax_v3.db')
     DEFAULT_UPLOAD = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'uploads')
 
 DB_PATH = os.environ.get('DB_PATH', DEFAULT_DB)
@@ -202,131 +202,47 @@ def get_db_connection():
     return conn
 
 def init_database():
-    """Initialize database tables with defensive migration"""
-    import traceback
-    
-    # Expected columns (14 + id + created_at)
+    """Initialize database - thread safe with context manager"""
     EXPECTED_COLS = [
         'id', 'filename', 'invoice_no', 'invoice_date', 'customer_name',
         'customer_address', 'job_number', 'awb', 'job_ref', 'exchange_rate',
         'total_amount', 'total_thb', 'items_json', 'status', 'currency', 'created_at'
     ]
     
-    try:
-        conn = get_db_connection()
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         
-        # Check if table exists and has correct schema
-        # Check if table exists and has correct schema
+        # Check invoices table
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invoices'")
-        table_exists = cursor.fetchone() is not None
-        
-        if table_exists:
-            # Get existing columns
+        if cursor.fetchone():
             cursor.execute("PRAGMA table_info(invoices)")
-            existing_cols = [row[1] for row in cursor.fetchall()]
-            
-            # If columns don't match, drop and recreate
-            if len(existing_cols) != len(EXPECTED_COLS):
-                print(f"Schema mismatch: {len(existing_cols)} cols vs {len(EXPECTED_COLS)} expected. Recreating...")
+            cols = [r[1] for r in cursor.fetchall()]
+            if len(cols) != len(EXPECTED_COLS):
                 cursor.execute("DROP TABLE invoices")
-                table_exists = False
         
-        if not table_exists:
-            # Create table with correct schema (14 columns + id + created_at)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS invoices (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    filename TEXT,
-                    invoice_no TEXT,
-                    invoice_date TEXT,
-                    customer_name TEXT,
-                    customer_address TEXT,
-                    job_number TEXT,
-                    awb TEXT,
-                    job_ref TEXT,
-                    exchange_rate REAL DEFAULT 1,
-                    total_amount REAL,
-                    total_thb REAL,
-                    items_json TEXT,
-                    status TEXT DEFAULT 'pending',
-                    currency TEXT DEFAULT 'USD',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            print("Created invoices table with correct schema")
-        
-    except Exception as e:
-        err_msg = f"Database init error: {e}\n{traceback.format_exc()}"
-        print(err_msg)
-        # Last resort: drop and recreate
-        try:
-            cursor.execute("DROP TABLE IF EXISTS invoices")
+        if not cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invoices'").fetchone():
             cursor.execute("""
                 CREATE TABLE invoices (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    filename TEXT,
-                    invoice_no TEXT,
-                    invoice_date TEXT,
-                    customer_name TEXT,
-                    customer_address TEXT,
-                    job_number TEXT,
-                    awb TEXT,
-                    job_ref TEXT,
-                    exchange_rate REAL DEFAULT 1,
-                    total_amount REAL,
-                    total_thb REAL,
-                    items_json TEXT,
-                    status TEXT DEFAULT 'pending',
-                    currency TEXT DEFAULT 'USD',
+                    filename TEXT, invoice_no TEXT, invoice_date TEXT,
+                    customer_name TEXT, customer_address TEXT, job_number TEXT,
+                    awb TEXT, job_ref TEXT, exchange_rate REAL DEFAULT 1,
+                    total_amount REAL, total_thb REAL, items_json TEXT,
+                    status TEXT DEFAULT 'pending', currency TEXT DEFAULT 'USD',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            conn.commit()
-        except Exception as final_err:
-            print(f"Final error: {final_err}")
-    
-    try:
+        
+        # Running numbers table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS running_numbers (
+                id INTEGER PRIMARY KEY, prefix TEXT NOT NULL,
+                last_number INTEGER NOT NULL DEFAULT 0, year INTEGER NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
         conn.commit()
-        conn.close()
-    except:
-        pass
-    
-    # Running number table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS running_numbers (
-            id INTEGER PRIMARY KEY,
-            prefix TEXT NOT NULL,
-            last_number INTEGER NOT NULL DEFAULT 0,
-            year INTEGER NOT NULL,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Invoice history table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS invoices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT,
-            invoice_no TEXT,
-            invoice_date TEXT,
-            customer_name TEXT,
-            customer_address TEXT,
-            job_number TEXT,
-            awb TEXT,
-            job_ref TEXT,
-            exchange_rate REAL DEFAULT 1,
-            total_amount REAL,
-            total_thb REAL,
-            items_json TEXT,
-            status TEXT DEFAULT 'pending',
-            currency TEXT DEFAULT 'USD',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
 
 def get_next_running_no():
     """Get next running number"""
