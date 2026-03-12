@@ -2177,8 +2177,8 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
                     <td style="text-align:right;"><b>฿{vat:,.2f}</b></td>
                 </tr>
                 <tr style="font-size:18px;">
-                    <td><b>TOTAL (THB):</b></td>
-                    <td style="text-align:right;"><b style="color:#0066b2;">฿{total_thb:,.2f}</b></td>
+                    <td><b>GRAND TOTAL (THB):</b></td>
+                    <td style="text-align:right;"><b style="color:#0066b2;">฿{subtotal+vat:,.2f}</b></td>
                 </tr>
             </table>
         </div>
