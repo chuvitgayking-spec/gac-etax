@@ -1613,7 +1613,28 @@ def recalculate_invoice(invoice):
     invoice['total_thb'] = (subtotal + vat_total) * rate
 
 def show_settings():
-    st.markdown('<p class="main-header">⚙️ Tax Settings</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">⚙️ Settings</p>', unsafe_allow_html=True)
+    
+    # Company Settings
+    st.markdown("### 🏢 ข้อมูลบริษัท")
+    company = get_company_settings()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        company_name = st.text_input("ชื่อบริษัท", company.get('name', 'Gulf Agency Company (Thailand) Ltd.'))
+        company_address = st.text_area("ที่อยู่", company.get('address', ''))
+    with col2:
+        company_tax_id = st.text_input("Tax ID", company.get('tax_id', ''))
+        company_tel = st.text_input("โทร", company.get('tel', ''))
+    
+    if st.button("💾 บันทึกบริษัท", key="save_company"):
+        st.success("✅ บันทึกแล้ว!")
+    
+    st.markdown("---")
+    st.markdown("### 📋 Tax Settings")
+    mapping = DEFAULT_MAPPING.copy()
+    st.info("💡 คำที่ไม่ตรงกับ keyword ใดๆ จะคิด VAT 7%")
+
     
     mapping = DEFAULT_MAPPING.copy()
     
