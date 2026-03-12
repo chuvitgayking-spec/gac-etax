@@ -2109,44 +2109,86 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
                 key=f"dl_xml{key_suffix}"
             )
 def show_history():
+    from datetime import datetime
+    
     st.markdown('<p class="main-header">📊 Invoice History (ประวัติการออกเอกสาร)</p>', unsafe_allow_html=True)
     
-    history = get_invoice_history(50)
+    # Month/Year filter
+    col_year, col_month = st.columns(2)
+    current_year = datetime.now().year
+    years = list(range(current_year - 2, current_year + 1))
+    
+    with col_year:
+        selected_year = st.selectbox("📅 ปี", years, index=len(years)-1)
+    with col_month:
+        months = ["ทุกเดือน", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", 
+                  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+        selected_month = st.selectbox("เดือน", months, index=0)
+    
+    history = get_invoice_history(200)  # Get more records
     
     if not history:
         st.info("ไม่พบข้อมูลประวัติในระบบ")
         return
     
-    # Export buttons
-    col_exp, col_space1, col_space2 = st.columns([1, 2, 1])
-    with col_exp:
-        df = pd.DataFrame(history)
-        
-        # CSV Export
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            "📥 Export CSV",
-            csv,
-            "invoice_history.csv",
-            "text/csv",
-            use_container_width=True
-        )
+    # Filter by month/year
+    filtered = []
+    for inv in history:
+        date_str = inv.get('invoice_date', '')
+        if date_str:
+            try:
+                # Try to parse date
+                for fmt in ['%d %b %Y', '%Y-%m-%d', '%d/%m/%Y']:
+                    try:
+                        inv_date = datetime.strptime(date_str, fmt)
+                        if selected_month == "ทุกเดือน":
+                            if inv_date.year == selected_year:
+                                filtered.append(inv)
+                        else:
+                            month_idx = months.index(selected_month)
+                            if inv_date.year == selected_year and inv_date.month == month_idx:
+                                filtered.append(inv)
+                        break
+                    except:
+                        continue
+            except:
+                pass
     
-    # Metrics
-    col1, col2, col3 = st.columns(3)
+    if not filtered:
+        st.warning(f"ไม่พบข้อมูลใน {selected_month} {selected_year}")
+        return
+    
+    df = pd.DataFrame(filtered)
+    
+    # Tax Summary Metrics
+    st.markdown("### 📊 สรุปยอดภาษี")
+    
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("📄 Total Invoices", len(df))
+        total_sales = df['total_thb'].sum() if 'total_thb' in df.columns else 0
+        total_sales_excl = total_sales / 1.07
+        st.metric("💰 ยอดขาย (ไม่รวม VAT)", f"฿{total_sales_excl:,.2f}")
     with col2:
-        total_usd = df['total_amount'].sum() if 'total_amount' in df.columns else 0
-        st.metric("💵 Total (USD)", f"${total_usd:,.2f}")
+        vat = total_sales - total_sales_excl
+        st.metric("📋 VAT 7%", f"฿{vat:,.2f}")
     with col3:
-        total_thb = df['total_thb'].sum() if 'total_thb' in df.columns else 0
-        st.metric("💰 Total (THB)", f"฿{total_thb:,.2f}")
+        st.metric("💵 ยอดรวม (THB)", f"฿{total_sales:,.2f}")
+    with col4:
+        st.metric("📄 จำนวนใบ", len(df))
+    
+    # Export buttons
+    st.markdown("---")
+    col_exp, col_space1 = st.columns([1, 4])
+    with col_exp:
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Export CSV", csv, f"history_{selected_year}_{selected_month}.csv", "text/csv", use_container_width=True)
     
     st.markdown("### 📋 รายละเอียด")
     
-    # Select columns to display
-    cols = [c for c in ['running_no', 'invoice_no', 'customer_name', 'invoice_date', 'total_amount', 'total_thb', 'status'] if c in df.columns]
+    # Select columns
+    cols = [c for c in ['receipt_running_no', 'invoice_no', 'customer_name', 'invoice_date', 'total_thb', 'vat_amount', 'status'] if c in df.columns]
+    if not cols:
+        cols = [c for c in ['running_no', 'invoice_no', 'customer_name', 'invoice_date', 'total_thb', 'status'] if c in df.columns]
     
     if cols:
         st.dataframe(df[cols], use_container_width=True, hide_index=True)
@@ -2303,4 +2345,27 @@ def run_etax_workflow(invoice_data: dict) -> dict:
         result['final_status'] = 'FAILED'
     
     return result
+
+
+
+def get_next_receipt_no():
+    """Generate next receipt running number (YYYY-NNNN)"""
+    from datetime import datetime
+    year = datetime.now().year
+    
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute(f"SELECT receipt_running_no FROM invoices WHERE receipt_running_no LIKE '{year}-%' ORDER BY id DESC LIMIT 1")
+            row = c.fetchone()
+        
+        if row and row[0]:
+            last_no = row[0]
+            seq = int(last_no.split('-')[1]) + 1
+        else:
+            seq = 1
+    except:
+        seq = 1
+    
+    return f"{year}-{seq:04d}"
 
