@@ -2088,6 +2088,22 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     html += '<div style="text-align:center;margin-top:30px;font-size:12px;">Thank you for your business!</div>'
     html += '</div></div></div>'
     
+    # PDF Preview toggle
+    show_pdf = st.checkbox("👁️ ดูตัวอย่างไฟล์ PDF จริง (Final Check)", key="pdf_preview_toggle")
+    
+    if show_pdf:
+        with st.spinner("กำลังเตรียมตัวอย่าง PDF..."):
+            try:
+                from pdf_generator import generate_receipt_pdf
+                import base64
+                pdf_buffer = generate_receipt_pdf(invoice_data)
+                pdf_bytes = pdf_buffer.getvalue()
+                b64 = base64.b64encode(pdf_bytes).decode()
+                pdf_display = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600" type="application/pdf"></iframe>'
+                st.markdown(pdf_display, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Error generating PDF: {e}")
+    
     # Download buttons
     st.markdown("### 🧾 ออกเอกสาร")
     col1, col2 = st.columns(2)
