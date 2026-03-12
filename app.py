@@ -2209,7 +2209,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         </div>
     </div>"""
     
-    st.markdown(a4_html, unsafe_allow_html=True)
+    st.components.v1.html(a4_html, height=900, scrolling=True)
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
