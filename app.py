@@ -842,10 +842,10 @@ def show_upload():
                     st.write(f"**Amount:** {inv.get('total_amount', 0):,.2f}")
                     st.write(f"**Items:** {len(inv.get('items', []))} รายการ")
             
-            # Confirmation button
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("✅ ยืนยันบันทึก", key="confirm_save"):
+                        # Confirmation buttons
+            col_confirm, col_cancel = st.columns(2)
+            with col_confirm:
+                if st.button("✅ ยืนยันบันทึก", type="primary", key="confirm_save"):
                     # Save to database
                     # Ensure database is initialized
                     init_database()
@@ -1261,12 +1261,12 @@ def show_invoice_list():
             st.rerun()
         return
     
-    st.markdown(f"### 📋 รายการ Invoice ({len(invoices)} ใบ)")
+    st.markdown(f"### 📋 รายการ Invoice ({len(filtered_invoices)} ใบ)")
     
     
     # Show table with all invoices - enhanced
     data = []
-    for i, inv in enumerate(invoices):
+    for i, inv in enumerate(filtered_invoices):
         status = inv.get('status', 'uploaded')
         status_display_map = {
             'pending': '⏳ รอดำเนินการ',
