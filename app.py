@@ -2108,7 +2108,7 @@ def show_batch_preview():
         show_single_invoice_preview(inv, key_suffix="_batch_selected")
 
 def show_single_invoice_preview(invoice_data, key_suffix=""):
-    """Preview a single invoice with A4 styling"""
+    """Preview a single invoice with detailed Thai GAC styling"""
     
     # Get values
     subtotal = float(invoice_data.get('total_amount', 0) or 0)
@@ -2121,23 +2121,52 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     
     invoice_no = invoice_data.get('invoice_no', '-')
     customer = invoice_data.get('customer_name', 'Customer')
-    address = invoice_data.get('customer_address', '')[:80]
+    address = invoice_data.get('customer_address', '')
     date = invoice_data.get('invoice_date', '')
     running = invoice_data.get('running_no', 'Draft')
     
-    # Build A4 HTML with string concatenation
-    html = '<div class="preview-container">'
-    html += '<style>.preview-container *{color:black!important}</style><div style="background:transparent;padding:30px;min-height:100vh;">'
-    html += '<div style="width:210mm;min-height:297mm;padding:20mm;margin:auto;background:#fff;box-shadow:0 0 10px rgba(0,0,0,0.1);">'
-    html += '<div style="font-size:24px;font-weight:bold;color:#0066b2;border-bottom:2px solid #0066b2;padding-bottom:10px;">RECEIPT / TAX INVOICE</div>'
-    html += '<div style="font-weight:bold;margin-top:10px;">Gulf Agency Company (Thailand) Ltd.</div>'
-    html += '<div style="font-size:12px;">26/30-31 9th Floor, Orakarn Building, Bangkok 10330</div>'
-    html += '<div style="font-size:11px;">Tax ID: 0105535169497 | Tel: 02-650-7400</div>'
-    html += '<table style="width:100%;border-collapse:collapse;margin:15px 0;"><tr><td><b>Receipt No:</b> ' + str(running) + '</td><td style="text-align:right;"><b>Date:</b> ' + str(date) + '</td></tr>'
-    html += '<tr><td colspan="2"><b>Invoice No:</b> ' + str(invoice_no) + '</td></tr>'
-    html += '<tr><td colspan="2"><b>Customer:</b> ' + str(customer) + '</td></tr>'
-    html += '<tr><td colspan="2"><b>Address:</b> ' + str(address) + '</td></tr></table>'
-    html += '<table style="width:100%;border-collapse:collapse;margin:15px 0;"><tr><th>Description</th><th style="text-align:right;">NON VAT</th><th style="text-align:right;">VAT 7%</th><th style="text-align:right;">Amount</th></tr>'
+    # Build detailed A4 HTML
+    html = '<div style="width:210mm;min-height:297mm;padding:15mm;margin:auto;background:#fff;font-family:sans-serif;font-size:11px;color:#000;">'
+    
+    # Header - Left side (Tax ID)
+    html += '<table style="width:100%;margin-bottom:10px;"><tr>'
+    html += '<td style="width:50%;vertical-align:top;">'
+    html += '<div style="font-weight:bold;">เลขประจำตัวผู้เสียภาษีอากร / Tax ID No. 0105535169497</div>'
+    html += '<div>ทะเบียนการค้า / Registration No. 0105535169497</div>'
+    html += '</td>'
+    html += '<td style="width:50%;text-align:right;vertical-align:top;">'
+    html += '<div style="font-size:18px;font-weight:bold;color:#0066b2;">GULF AGENCY COMPANY (THAILAND) LTD.</div>'
+    html += '<div>บริษัท กัลฟ์ เอเจนซี่ คัมปะนี (ประเทศไทย) จำกัด</div>'
+    html += '<div>26/30-31 ชั้น 9 อาคารอรกาน์ ซอยชิดลม ถนนพระราม 4 แขวงลุมพินี เขตปางคอยแหลม กรุงเทพมหานคร 10330</div>'
+    html += '<div>Tel: 02-650-7400 | Email: thailand@gac.com</div>'
+    html += '</td></tr></table>'
+    
+    # Title
+    html += '<div style="text-align:center;font-size:20px;font-weight:bold;padding:10px;border:2px solid #000;margin:15px 0;">RECEIPT COPY / TAX INVOICE COPY</div>'
+    
+    # Customer & Document Info
+    html += '<table style="width:100%;border-collapse:collapse;margin-bottom:15px;border:1px solid #000;">'
+    html += '<tr><td style="width:50%;padding:10px;border:1px solid #000;vertical-align:top;">'
+    html += '<div style="font-weight:bold;margin-bottom:5px;">ชื่อลูกค้า / Customer Name:</div>'
+    html += '<div>' + str(customer) + '</div>'
+    html += '<div style="margin-top:5px;">' + str(address)[:100] + '</div>'
+    html += '</td>'
+    html += '<td style="width:50%;padding:10px;border:1px solid #000;vertical-align:top;">'
+    html += '<table style="width:100%;">'
+    html += '<tr><td style="width:40%;"><b>No. / เลขที่:</b></td><td>' + str(running) + '</td></tr>'
+    html += '<tr><td><b>Date / วันที่:</b></td><td>' + str(date) + '</td></tr>'
+    html += '<tr><td><b>Invoice No:</b></td><td>' + str(invoice_no) + '</td></tr>'
+    html += '</table>'
+    html += '</td></tr></table>'
+    
+    # Items Table
+    html += '<table style="width:100%;border-collapse:collapse;margin-bottom:15px;border:1px solid #000;">'
+    html += '<tr style="background:#eee;">'
+    html += '<th style="padding:8px;border:1px solid #000;text-align:center;">รายการ / Description</th>'
+    html += '<th style="padding:8px;border:1px solid #000;text-align:right;">จำนวนเงิน / Amount</th>'
+    html += '<th style="padding:8px;border:1px solid #000;text-align:right;">VAT 7%</th>'
+    html += '<th style="padding:8px;border:1px solid #000;text-align:right;">Total (THB)</th>'
+    html += '</tr>'
     
     # Add items
     try:
@@ -2145,56 +2174,50 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         if not items and invoice_data.get('items_json'):
             import json
             items = json.loads(invoice_data.get('items_json', '[]'))
-        for item in items[:10]:
-            desc = item.get('description', '-')[:40]
+        for item in items[:12]:
+            desc = item.get('description', '-')[:50]
             amt = float(item.get('amount', 0))
-            html += '<tr><td>' + str(desc) + '</td><td style="text-align:right;">-</td><td style="text-align:right;">฿' + f"{amt*0.07:,.2f}" + '</td><td style="text-align:right;">฿' + f"{amt:,.2f}" + '</td></tr>'
+            item_vat = amt * 0.07
+            html += '<tr><td style="padding:6px;border:1px solid #000;">' + str(desc) + '</td>'
+            html += '<td style="padding:6px;border:1px solid #000;text-align:right;">' + f"{amt:,.2f}" + '</td>'
+            html += '<td style="padding:6px;border:1px solid #000;text-align:right;">' + f"{item_vat:,.2f}" + '</td>'
+            html += '<td style="padding:6px;border:1px solid #000;text-align:right;">' + f"{amt:,.2f}" + '</td></tr>'
     except:
         pass
     
     html += '</table>'
-    html += '<div style="background:transparent;padding:15px;margin-top:20px;">'
-    html += '<table style="width:100%;"><tr><td><b>Subtotal:</b></td><td style="text-align:right;"><b>฿' + f"{total_thb-vat:,.2f}" + '</b></td></tr>'
-    html += '<tr><td><b>VAT 7%:</b></td><td style="text-align:right;"><b>฿' + f"{vat:,.2f}" + '</b></td></tr>'
-    html += '<tr style="font-size:18px;"><td><b>GRAND TOTAL:</b></td><td style="text-align:right;"><b style="color:#0066b2;">฿' + f"{total_thb:,.2f}" + '</b></td></tr></table>'
+    
+    # Totals
+    html += '<table style="width:50%;margin-left:auto;border-collapse:collapse;">'
+    html += '<tr><td style="padding:8px;text-align:right;"><b>รวมเงิน / Subtotal:</b></td><td style="padding:8px;text-align:right;border:1px solid #000;">' + f"{total_thb - vat:,.2f}" + '</td></tr>'
+    html += '<tr><td style="padding:8px;text-align:right;"><b>ภาษีมูลค่าเพิ่ม 7% / VAT 7%:</b></td><td style="padding:8px;text-align:right;border:1px solid #000;">' + f"{vat:,.2f}" + '</td></tr>'
+    html += '<tr><td style="padding:10px;text-align:right;font-size:14px;"><b>จำนวนเงินรวม / GRAND TOTAL:</b></td><td style="padding:10px;text-align:right;border:2px solid #000;font-size:14px;font-weight:bold;">' + f"{total_thb:,.2f}" + '</td></tr>'
+    html += '</table>'
+    
+    # Footer - Payment method
+    html += '<table style="width:100%;margin-top:30px;border-collapse:collapse;">'
+    html += '<tr>'
+    html += '<td style="width:50%;padding:10px;border:1px dashed #888;">'
+    html += '<div style="margin-bottom:10px;"><b>วิธีการชำระเงิน / Payment Method:</b></div>'
+    html += '<div>☐ เงินสด / Cash &nbsp;&nbsp; ☑ เครดิต / Credit &nbsp;&nbsp; ☐ เช็ค / Cheque</div>'
+    html += '<div style="margin-top:10px;border-top:1px dotted #888;padding-top:5px;">Bank: Bangkok Bank | A/C: 123-456-7890</div>'
+    html += '</td>'
+    html += '<td style="width:50%;padding:10px;">'
+    html += '<table style="width:100%;">'
+    html += '<tr><td style="height:40px;"></td></tr>'
+    html += '<tr><td style="border-top:1px solid #000;text-align:center;">ผู้เก็บเงิน / Bill Collector</td></tr>'
+    html += '<tr><td style="height:30px;"></td></tr>'
+    html += '<tr><td style="border-top:1px solid #000;text-align:center;">Accountant</td></tr>'
+    html += '</table>'
+    html += '</td>'
+    html += '</tr></table>'
+    
+    # Standard conditions
+    html += '<div style="margin-top:20px;font-size:9px;text-align:center;color:#666;">'
+    html += 'Standard Trading Conditions apply. Subject to Bangkok, Thailand jurisdiction.'
     html += '</div>'
-    html += '<div style="text-align:center;margin-top:30px;font-size:12px;">Thank you for your business!</div>'
-    html += '</div></div></div>'
     
-    # PDF Preview toggle
-    show_pdf = st.checkbox("👁️ ดูตัวอย่างไฟล์ PDF จริง (Final Check)", key="pdf_preview_toggle")
-    
-    if show_pdf:
-        with st.spinner("กำลังเตรียมตัวอย่าง PDF..."):
-            try:
-                from pdf_generator import generate_receipt_pdf
-                import base64
-                pdf_buffer = generate_receipt_pdf(invoice_data)
-                pdf_bytes = pdf_buffer.getvalue()
-                b64 = base64.b64encode(pdf_bytes).decode()
-                pdf_display = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600" type="application/pdf"></iframe>'
-                st.markdown(pdf_display, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error generating PDF: {e}")
-    
-    # Download buttons
-    st.markdown("### 🧾 ออกเอกสาร")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📥 Generate PDF", key="gen_pdf_preview"):
-            try:
-                from pdf_generator import generate_receipt_pdf
-                pdf_buffer = generate_receipt_pdf(invoice_data)
-                st.download_button(
-                    label="📥 Download PDF",
-                    data=pdf_buffer.getvalue(),
-                    file_name=f"receipt_{running}.pdf",
-                    mime="application/pdf"
-                )
-            except Exception as e:
-                st.error(f"Error: {e}")
-    with col2:
-        st.info("💡 ระบบพร้อมออกเอกสาร")
+    html += '</div>'
     
     st.markdown(html, unsafe_allow_html=True)
 
