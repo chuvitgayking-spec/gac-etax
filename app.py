@@ -2088,9 +2088,27 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     html += '<div style="text-align:center;margin-top:30px;font-size:12px;">Thank you for your business!</div>'
     html += '</div></div></div>'
     
+    # Download buttons
+    st.markdown("### 🧾 ออกเอกสาร")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📥 Generate PDF", key="gen_pdf"):
+            try:
+                from pdf_generator import generate_receipt_pdf
+                pdf_buffer = generate_receipt_pdf(invoice_data)
+                st.download_button(
+                    label="📥 Download PDF",
+                    data=pdf_buffer.getvalue(),
+                    file_name=f"receipt_{running}.pdf",
+                    mime="application/pdf"
+                )
+            except Exception as e:
+                st.error(f"Error: {e}")
+    with col2:
+        st.info("💡 ระบบพร้อมออกเอกสาร")
+    
     st.markdown(html, unsafe_allow_html=True)
     
-    # Download buttons
     st.markdown("### 🧾 ออกเอกสาร")
     col1, col2 = st.columns(2)
     with col1:
