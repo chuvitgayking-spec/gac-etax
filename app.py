@@ -1999,16 +1999,23 @@ def show_batch_preview():
 
 def show_single_invoice_preview(invoice_data, key_suffix=""):
     """Preview a single invoice"""
+    # Get values with safe .get()
+    subtotal = float(invoice_data.get('total_amount', 0) or 0)
+    exchange_rate = float(invoice_data.get('exchange_rate', 1) or 1)
+    currency = invoice_data.get('currency', 'USD')
+    total_thb = float(invoice_data.get('total_thb', 0) or 0)
+    vat = total_thb - (total_thb / 1.07)
+    
     # Summary
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Running No", "Auto")
+        st.metric("Invoice No", invoice_data.get('invoice_no', '-'))
     with col2:
-        st.metric("Subtotal", f"${float(invoice_data['subtotal']):,.2f}")
+        st.metric(f"Subtotal ({currency})", f"{subtotal:,.2f}")
     with col3:
-        st.metric("VAT", f"${float(invoice_data['vat_amount']):,.2f}")
+        st.metric("Rate", f"฿{exchange_rate:.2f}")
     with col4:
-        st.metric("Total", f"${float(invoice_data['total_amount']):,.2f}")
+        st.metric("Total (THB)", f"฿{total_thb:,.2f}")
     
     # Items table
     st.markdown("#### รายการ")
