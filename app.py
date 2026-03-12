@@ -698,6 +698,34 @@ def main():
 def show_upload():
     st.markdown('<p class="main-header">📤 Upload XML Invoice</p>', unsafe_allow_html=True)
     
+    # Navigation buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📋 ดูรายการ Invoice", use_container_width=True):
+            st.session_state['menu'] = '📋 Invoice List'
+            st.rerun()
+    with col2:
+        if st.button("🏠 Dashboard", use_container_width=True):
+            st.session_state['menu'] = '🏠 Dashboard'
+            st.rerun()
+    
+    # Recent invoices
+    st.markdown("---")
+    st.markdown("### 📋 5 รายการล่าสุด")
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT invoice_no, customer_name, invoice_date, total_amount, status FROM invoices ORDER BY id DESC LIMIT 5")
+            recent = cur.fetchall()
+            if recent:
+                for inv in recent:
+                    st.markdown(f"- **{inv[0]}** | {inv[1]} | {inv[2]} | ฿{inv[3]:,.2f} | {inv[4]}")
+            else:
+                st.info("ยังไม่มีรายการ")
+    except:
+        st.info("ยังไม่มีรายการ")
+    st.markdown("---")
+    
     # Show sidebar with uploaded files
     show_uploaded_list_sidebar()
     
