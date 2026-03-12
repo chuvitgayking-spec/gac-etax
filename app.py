@@ -246,6 +246,18 @@ def init_database():
         conn.commit()
 
 def get_next_running_no():
+    pass
+
+def get_company_settings():
+    """Get company settings"""
+    return {
+        'name': 'Gulf Agency Company (Thailand) Ltd.',
+        'address': '26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330',
+        'tax_id': '0105535169497',
+        'tel': '02-650-7400',
+        'email': 'thailand@gac.com'
+    }
+
     """Get next running number"""
     from datetime import datetime
     
