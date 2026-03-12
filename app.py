@@ -1248,20 +1248,21 @@ def show_invoice_list():
     """Show list of all uploaded invoices for editing"""
     st.markdown('<p class="main-header">📋 Invoice List</p>', unsafe_allow_html=True)
     
-    # Load from files
-    invoices = load_invoices_from_db()
+    # Load from database
+    all_invoices = load_invoices_from_db()
+    
+    # Initialize filtered as all
+    filtered_invoices = all_invoices
     
     # Debug info
-    st.caption(f"📊 Debug: Found {len(invoices)} invoices in database")
+    st.caption(f"📊 Debug: Found {len(all_invoices)} invoices in database")
     
-    if not invoices:
+    if not all_invoices:
         st.warning("⚠️ ยังไม่มี Invoice")
         if st.button("📤 ไปหน้าอัปโหลด"):
             st.session_state['menu'] = '📤 Upload'
             st.rerun()
         return
-    
-    st.markdown(f"### 📋 รายการ Invoice ({len(filtered_invoices)} ใบ)")
     
     
     # Show table with all invoices - enhanced
