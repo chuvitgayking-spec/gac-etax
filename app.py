@@ -567,9 +567,9 @@ def generate_pdf(invoice_data):
     
     # Totals in both USD and THB
     totals = [
-        ['Subtotal:', f"฿{float(invoice_data.get('total_amount', 0)) * float(invoice_data.get('exchange_rate', 1)):, .2f}"],
-        ['VAT 7%:', f"฿{float(invoice_data['vat_amount']) * float(invoice_data['exchange_rate']):,.2f}"],
-        ['TOTAL:', f"฿{float(invoice_data['total_thb']):,.2f}"],\
+        ['Subtotal:', f"฿{float(invoice_data.get('total_amount', 0) or 0) * float(invoice_data.get('exchange_rate', 1) or 1):,.2f}"],
+        ['VAT 7%:', f"฿{float(invoice_data.get('vat_amount', 0) or 0):,.2f}"],
+        ['TOTAL:', f"฿{float(invoice_data.get('total_thb', 0) or 0):,.2f}"],
 
     ]
     
