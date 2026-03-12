@@ -256,6 +256,17 @@ def init_database():
         if cursor.fetchone()[0] == 0:
             cursor.execute("INSERT INTO company_settings VALUES (1, 'Gulf Agency Company (Thailand) Ltd.', '26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330', '0105535169497', '02-650-7400')")
         
+        # Tax mapping table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tax_mapping (
+                id INTEGER PRIMARY KEY, non_vat TEXT, partial_vat TEXT
+            )
+        """)
+        
+        cursor.execute("SELECT COUNT(*) FROM tax_mapping")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO tax_mapping VALUES (1, 'OCEAN FREIGHT,AIR FREIGHT,SEA FREIGHT,INTERNATIONAL FREIGHT,INLAND FREIGHT', '')")
+        
         conn.commit()
 
 def get_next_running_no():
@@ -1665,31 +1676,47 @@ def show_settings():
     
     st.markdown("---")
     st.markdown("### 📋 Tax Settings")
-    mapping = DEFAULT_MAPPING.copy()
-    st.info("💡 คำที่ไม่ตรงกับ keyword ใดๆ จะคิด VAT 7%")
-
     
-    mapping = DEFAULT_MAPPING.copy()
+    # Load from database
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT non_vat, partial_vat FROM tax_mapping WHERE id=1")
+        row = c.fetchone()
+        conn.close()
+        if row:
+            saved_non_vat = row[0] or ''
+            saved_partial = row[1] or ''
+        else:
+            saved_non_vat = ', '.join(DEFAULT_MAPPING['NON_VAT'])
+            saved_partial = ', '.join(DEFAULT_MAPPING['PARTIAL_VAT'])
+    except:
+        saved_non_vat = ', '.join(DEFAULT_MAPPING['NON_VAT'])
+        saved_partial = ', '.join(DEFAULT_MAPPING['PARTIAL_VAT'])
     
-    st.info("💡 รายการที่ไม่ตรงกับเงื่อนไขใดๆ จะคิด VAT 7% อัตโนมัติ")
+    st.info("💡 รายการที่ไม่ตรงกับ keyword ใดๆ จะคิด VAT 7%")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("#### 📄 กลุ่ม A - ไม่คิด VAT (0%)")
-        non_vat = st.text_area("Keywords (คั่นด้วย comma)", value=', '.join(mapping['NON_VAT']), height=120, key="non_vat")
+        non_vat = st.text_area("Keywords (คั่นด้วย comma)", value=saved_non_vat, height=120, key="non_vat")
     
     with col2:
         st.markdown("#### 📋 กลุ่ม C - หัก VAT บางส่วน")
-        partial = st.text_area("Keywords (คั่นด้วย comma)", value=', '.join(mapping['PARTIAL_VAT']), height=120, key="partial")
+        partial = st.text_area("Keywords (คั่นด้วย comma)", value=saved_partial, height=120, key="partial")
     
     if st.button("💾 Save Settings", type="primary"):
-        # Update mapping
-        mapping['NON_VAT'] = [k.strip() for k in non_vat.split(',') if k.strip()]
-        mapping['PARTIAL_VAT'] = [k.strip() for k in partial.split(',') if k.strip()]
-        
-        st.session_state['tax_mapping'] = mapping
-        st.success("✅ บันทึกสำเร็จ!")
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("UPDATE tax_mapping SET non_vat=?, partial_vat=? WHERE id=1", (non_vat, partial))
+            conn.commit()
+            conn.close()
+            st.success("✅ บันทึกสำเร็จ!")
+        except Exception as e:
+            st.error(f"Error: {e}")
 
 def show_preview():
     st.markdown('<p class="main-header">👁️ Preview & Issue Invoice</p>', unsafe_allow_html=True)
