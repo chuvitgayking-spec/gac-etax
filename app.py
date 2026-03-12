@@ -214,17 +214,20 @@ def init_database():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS invoices (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            invoice_no TEXT UNIQUE NOT NULL,
-            running_no TEXT NOT NULL,
-            customer_name TEXT, customer_address TEXT,
-            address TEXT,
+            filename TEXT,
+            invoice_no TEXT,
             invoice_date TEXT,
-            subtotal REAL,
-            vat_amount REAL,
+            customer_name TEXT,
+            customer_address TEXT,
+            job_number TEXT,
+            awb TEXT,
+            job_ref TEXT,
+            exchange_rate REAL DEFAULT 1,
             total_amount REAL,
             total_thb REAL,
-            exchange_rate REAL,
-            file_source TEXT,
+            items_json TEXT,
+            status TEXT DEFAULT 'pending',
+            currency TEXT DEFAULT 'USD',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
