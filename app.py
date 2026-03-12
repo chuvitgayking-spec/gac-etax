@@ -1680,21 +1680,22 @@ def show_settings():
     
     # Load from database
     import sqlite3
+    saved_non_vat = ', '.join(DEFAULT_MAPPING['NON_VAT'])
+    saved_partial = ', '.join(DEFAULT_MAPPING['PARTIAL_VAT'])
     try:
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("SELECT non_vat, partial_vat FROM tax_mapping WHERE id=1")
-        row = c.fetchone()
+        # Check if table exists
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tax_mapping'")
+        if c.fetchone():
+            c.execute("SELECT non_vat, partial_vat FROM tax_mapping WHERE id=1")
+            row = c.fetchone()
+            if row:
+                saved_non_vat = row[0] or saved_non_vat
+                saved_partial = row[1] or saved_partial
         conn.close()
-        if row:
-            saved_non_vat = row[0] or ''
-            saved_partial = row[1] or ''
-        else:
-            saved_non_vat = ', '.join(DEFAULT_MAPPING['NON_VAT'])
-            saved_partial = ', '.join(DEFAULT_MAPPING['PARTIAL_VAT'])
-    except:
-        saved_non_vat = ', '.join(DEFAULT_MAPPING['NON_VAT'])
-        saved_partial = ', '.join(DEFAULT_MAPPING['PARTIAL_VAT'])
+    except Exception as e:
+        pass
     
     st.info("💡 รายการที่ไม่ตรงกับ keyword ใดๆ จะคิด VAT 7%")
     
@@ -1712,7 +1713,18 @@ def show_settings():
         try:
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
-            c.execute("UPDATE tax_mapping SET non_vat=?, partial_vat=? WHERE id=1", (non_vat, partial))
+            # Create table if not exists
+            c.execute("""
+                CREATE TABLE IF NOT EXISTS tax_mapping (
+                    id INTEGER PRIMARY KEY, non_vat TEXT, partial_vat TEXT
+                )
+            """)
+            # Check if row exists
+            c.execute("SELECT COUNT(*) FROM tax_mapping")
+            if c.fetchone()[0] == 0:
+                c.execute("INSERT INTO tax_mapping VALUES (1, ?, ?)", (non_vat, partial))
+            else:
+                c.execute("UPDATE tax_mapping SET non_vat=?, partial_vat=? WHERE id=1", (non_vat, partial))
             conn.commit()
             conn.close()
             st.success("✅ บันทึกสำเร็จ!")
