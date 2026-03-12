@@ -2085,7 +2085,10 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
             st.info(f"📋 ใช้เลขเดิม: {running_no}")
         else:
             # Get new running number
+            try:
             running_no = get_next_receipt_no()
+        except:
+            running_no = get_next_receipt_no_fallback()
         
         invoice_data['running_no'] = running_no
         invoice_data['receipt_running_no'] = running_no
