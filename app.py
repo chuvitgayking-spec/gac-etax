@@ -47,6 +47,122 @@ import os
 # Database path - works on both local and cloud
 import platform
 import os
+# Unified HTML Template Generator
+def get_unified_receipt_html(invoice_data):
+    """Generate unified HTML for both preview and PDF"""
+    
+    # Get values
+    subtotal = float(invoice_data.get('total_amount', 0) or 0)
+    exchange_rate = float(invoice_data.get('exchange_rate', 1) or 1)
+    currency = invoice_data.get('currency', 'USD')
+    total_thb = float(invoice_data.get('total_thb', 0) or 0)
+    if total_thb == 0 and subtotal > 0:
+        total_thb = subtotal * exchange_rate
+    vat = total_thb - (total_thb / 1.07)
+    
+    invoice_no = invoice_data.get('invoice_no', '-')
+    customer = invoice_data.get('customer_name', 'Customer')
+    address = invoice_data.get('customer_address', '')
+    date = invoice_data.get('invoice_date', '')
+    running = invoice_data.get('running_no', 'Draft')
+    
+    # Build unified HTML
+    html = '<div style="width:210mm;min-height:297mm;padding:15mm;margin:auto;background:#fff;font-family:sans-serif;font-size:11px;color:#000;">'
+    
+    # Header
+    html += '<table style="width:100%;margin-bottom:10px;"><tr>'
+    html += '<td style="width:50%;vertical-align:top;">'
+    html += '<div style="font-weight:bold;">เลขประจำตัวผู้เสียภาษีอากร / Tax ID No. 0105535169497</div>'
+    html += '<div>ทะเบียนการค้า / Registration No. 0105535169497</div>'
+    html += '</td>'
+    html += '<td style="width:50%;text-align:right;vertical-align:top;">'
+    html += '<div style="font-size:18px;font-weight:bold;color:#0066b2;">GULF AGENCY COMPANY (THAILAND) LTD.</div>'
+    html += '<div>บริษัท กัลฟ์ เอเจนซี่ คัมปะนี (ประเทศไทย) จำกัด</div>'
+    html += '<div>26/30-31 ชั้น 9 อาคารอรกาน์ ซอยชิดลม ถนนพระราม 4 แขวงลุมพินี เขตปางคอยแหลม กรุงเทพมหานคร 10330</div>'
+    html += '<div>Tel: 02-650-7400 | Email: thailand@gac.com</div>'
+    html += '</td></tr></table>'
+    
+    # Title
+    html += '<div style="text-align:center;font-size:18px;font-weight:bold;padding:10px;border:2px solid #000;margin:15px 0;">RECEIPT COPY / TAX INVOICE COPY</div>'
+    
+    # Customer & Doc Info
+    html += '<table style="width:100%;margin-bottom:15px;border:1px solid #000;">'
+    html += '<tr><td style="width:50%;padding:10px;border:1px solid #000;vertical-align:top;">'
+    html += '<div style="font-weight:bold;margin-bottom:5px;">ชื่อลูกค้า / Customer Name:</div>'
+    html += '<div>' + str(customer) + '</div>'
+    html += '<div style="margin-top:5px;">' + str(address)[:100] + '</div>'
+    html += '</td>'
+    html += '<td style="width:50%;padding:10px;border:1px solid #000;vertical-align:top;">'
+    html += '<table style="width:100%;">'
+    html += '<tr><td style="width:40%;"><b>No. / เลขที่:</b></td><td>' + str(running) + '</td></tr>'
+    html += '<tr><td><b>Date / วันที่:</b></td><td>' + str(date) + '</td></tr>'
+    html += '<tr><td><b>Invoice No:</b></td><td>' + str(invoice_no) + '</td></tr>'
+    html += '</table>'
+    html += '</td></tr></table>'
+    
+    # Items Table
+    html += '<table style="width:100%;margin-bottom:15px;border:1px solid #000;border-collapse:collapse;">'
+    html += '<tr style="background:#eee;">'
+    html += '<th style="padding:8px;border:1px solid #000;text-align:center;">รายการ / Description</th>'
+    html += '<th style="padding:8px;border:1px solid #000;text-align:right;">จำนวนเงิน / Amount</th>'
+    html += '<th style="padding:8px;border:1px solid #000;text-align:right;">VAT 7%</th>'
+    html += '<th style="padding:8px;border:1px solid #000;text-align:right;">Total (THB)</th>'
+    html += '</tr>'
+    
+    try:
+        items = invoice_data.get('items', [])
+        if not items and invoice_data.get('items_json'):
+            import json
+            items = json.loads(invoice_data.get('items_json', '[]'))
+        for item in items[:15]:
+            desc = item.get('description', '-')[:50]
+            amt = float(item.get('amount', 0))
+            item_vat = amt * 0.07
+            html += '<tr><td style="padding:6px;border:1px solid #000;">' + str(desc) + '</td>'
+            html += '<td style="padding:6px;border:1px solid #000;text-align:right;">' + f"{amt:,.2f}" + '</td>'
+            html += '<td style="padding:6px;border:1px solid #000;text-align:right;">' + f"{item_vat:,.2f}" + '</td>'
+            html += '<td style="padding:6px;border:1px solid #000;text-align:right;">' + f"{amt:,.2f}" + '</td></tr>'
+    except:
+        pass
+    
+    html += '</table>'
+    
+    # Totals
+    html += '<table style="width:50%;margin-left:auto;border-collapse:collapse;">'
+    html += '<tr><td style="padding:8px;text-align:right;"><b>รวมเงิน / Subtotal:</b></td><td style="padding:8px;text-align:right;border:1px solid #000;">' + f"{total_thb - vat:,.2f}" + '</td></tr>'
+    html += '<tr><td style="padding:8px;text-align:right;"><b>ภาษีมูลค่าเพิ่ม 7% / VAT 7%:</b></td><td style="padding:8px;text-align:right;border:1px solid #000;">' + f"{vat:,.2f}" + '</td></tr>'
+    html += '<tr><td style="padding:10px;text-align:right;font-size:14px;"><b>จำนวนเงินรวม / GRAND TOTAL:</b></td><td style="padding:10px;text-align:right;border:2px solid #000;font-size:14px;font-weight:bold;">' + f"{total_thb:,.2f}" + '</td></tr>'
+    html += '</table>'
+    
+    # Footer
+    html += '<table style="width:100%;margin-top:30px;border-collapse:collapse;">'
+    html += '<tr>'
+    html += '<td style="width:50%;padding:10px;border:1px dashed #888;">'
+    html += '<div style="margin-bottom:10px;"><b>วิธีการชำระเงิน / Payment Method:</b></div>'
+    html += '<div>☐ เงินสด / Cash &nbsp;&nbsp; ☑ เครดิต / Credit &nbsp;&nbsp; ☐ เช็ค / Cheque</div>'
+    html += '<div style="margin-top:10px;border-top:1px dotted #888;padding-top:5px;">Bank: Bangkok Bank | A/C: 123-456-7890</div>'
+    html += '</td>'
+    html += '<td style="width:50%;padding:10px;">'
+    html += '<table style="width:100%;">'
+    html += '<tr><td style="height:40px;"></td></tr>'
+    html += '<tr><td style="border-top:1px solid #000;text-align:center;">ผู้เก็บเงิน / Bill Collector</td></tr>'
+    html += '<tr><td style="height:30px;"></td></tr>'
+    html += '<tr><td style="border-top:1px solid #000;text-align:center;">Accountant</td></tr>'
+    html += '</table>'
+    html += '</td>'
+    html += '</tr></table>'
+    
+    # Disclaimer - 15% from bottom
+    html += '<div style="margin-top:50px;border-top:1px solid #ccc;padding-top:15px;">'
+    html += '<div style="font-size:8px;text-align:left;line-height:1.6;color:#333;">'
+    html += '<b>All business is undertaken subject to our Standard Trading Conditions of Carriage, which are incorporated into all contracts of carriage to which we are a party.</b><br><br>'
+    html += '<b>ใบเสร็จรับเงินนี้จะสมบูรณ์ต่อเมื่อมีลายเซ็นของผู้มีอำนาจและพนักงานเก็บเงินของบริษัทฯ กรณีชำระด้วยเช็ค ใบเสร็จรับเงินนี้จะสมบูรณ์ต่อเมื่อบริษัทฯ ได้รับชำระเงินตามเช็คเรียบร้อยแล้ว</b><br><br>'
+    html += '<i>This receipt is not valid unless signed by authorized person and collector. If payment is made by cheque, this receipt will be valid only when the cheque has been honoured.</i>'
+    html += '</div></div>'
+    
+    html += '</div>'
+    return html
+
 
 # Detect if running on Streamlit Cloud
 IS_CLOUD = os.environ.get('STREAMLIT_SHARED') is not None or os.path.exists('/mount/src')
