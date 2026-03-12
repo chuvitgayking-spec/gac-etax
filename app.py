@@ -244,6 +244,15 @@ def init_database():
         
         conn.commit()
 
+
+
+def get_receipt_no_simple():
+    """Simple receipt number generator - fallback"""
+    from datetime import datetime
+    year = datetime.now().year
+    return f"{year}-0001"
+
+
 def get_next_running_no():
     """Get next running number"""
     import sqlite3
@@ -2088,7 +2097,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
             try:
                 running_no = get_next_receipt_no()
             except:
-                running_no = get_next_receipt_no_fallback()
+                running_no = get_receipt_no_simple()
         
         invoice_data['running_no'] = running_no
         invoice_data['receipt_running_no'] = running_no
@@ -2391,7 +2400,7 @@ def run_etax_workflow(invoice_data: dict) -> dict:
 
 
 
-def get_next_receipt_no_fallback():
+def get_receipt_no_simple():
     """Fallback function to generate receipt number"""
     from datetime import datetime
     year = datetime.now().year
