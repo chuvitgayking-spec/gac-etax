@@ -199,6 +199,9 @@ def init_database():
     conn = get_db_connection()
     cursor = conn.cursor()
     
+    # Drop old table if exists (to fix schema mismatch)
+    cursor.execute("DROP TABLE IF EXISTS invoices")
+    
     # Running number table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS running_numbers (
