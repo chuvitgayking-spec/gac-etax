@@ -2040,13 +2040,20 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     # Add GAC-style A4 CSS
     st.markdown("""
     <style>
+    @page { size: A4; margin: 0; }
+    body { margin: 0; }
+    .invoice-preview-bg {
+        background: #f0f2f6;
+        padding: 20px;
+        min-height: 100vh;
+    }
     .invoice-a4 {
         background: white;
-        padding: 40px;
-        border-radius: 8px;
+        width: 210mm;
+        min-height: 297mm;
+        padding: 20mm;
+        margin: auto;
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        max-width: 900px;
-        margin: 20px auto;
         font-family: Arial, sans-serif;
         border-top: 4px solid #0066b2;
     }
@@ -2056,9 +2063,13 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         margin-bottom: 20px;
     }
     .invoice-title {
-        font-size: 24px;
+        font-size: 28px;
         font-weight: bold;
         color: #0066b2;
+    }
+    .invoice-logo {
+        max-width: 150px;
+        height: auto;
     }
     .invoice-table {
         width: 100%;
@@ -2067,9 +2078,9 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     }
     .invoice-table th {
         background: #f0f2f6;
-        padding: 10px;
+        padding: 12px;
         text-align: left;
-        border-bottom: 2px solid #ddd;
+        border-bottom: 2px solid #0066b2;
     }
     .invoice-table td {
         padding: 10px;
@@ -2077,9 +2088,17 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     }
     .invoice-total {
         background: #f0f2f6;
-        padding: 15px;
-        border-radius: 5px;
-        margin-top: 20px;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 30px;
+        position: relative;
+    }
+    .invoice-footer {
+        position: relative;
+        margin-top: 50px;
+        text-align: center;
+        color: #888;
+        font-size: 12px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -2209,7 +2228,9 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         </div>
     </div>"""
     
-    st.components.v1.html(a4_html, height=900, scrolling=True)
+    st.markdown("<div class=\"invoice-preview-bg\">", unsafe_allow_html=True)
+    st.components.v1.html(a4_html, height=1000, scrolling=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
