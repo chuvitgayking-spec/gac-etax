@@ -243,19 +243,42 @@ def init_database():
             )
         """)
         
+        # Company settings table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS company_settings (
+                id INTEGER PRIMARY KEY, company_name TEXT,
+                company_address TEXT, company_tax_id TEXT, company_tel TEXT
+            )
+        """)
+        
+        # Insert default if empty
+        cursor.execute("SELECT COUNT(*) FROM company_settings")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("INSERT INTO company_settings VALUES (1, 'Gulf Agency Company (Thailand) Ltd.', '26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330', '0105535169497', '02-650-7400')")
+        
         conn.commit()
 
 def get_next_running_no():
     pass
 
 def get_company_settings():
-    """Get company settings"""
+    """Get company settings from database"""
+    import sqlite3
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT company_name, company_address, company_tax_id, company_tel FROM company_settings WHERE id=1")
+        row = c.fetchone()
+        conn.close()
+        if row:
+            return {'name': row[0], 'address': row[1], 'tax_id': row[2], 'tel': row[3]}
+    except:
+        pass
     return {
         'name': 'Gulf Agency Company (Thailand) Ltd.',
         'address': '26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330',
         'tax_id': '0105535169497',
-        'tel': '02-650-7400',
-        'email': 'thailand@gac.com'
+        'tel': '02-650-7400'
     }
 
     """Get next running number"""
@@ -1628,7 +1651,17 @@ def show_settings():
         company_tel = st.text_input("โทร", company.get('tel', ''))
     
     if st.button("💾 บันทึกบริษัท", key="save_company"):
-        st.success("✅ บันทึกแล้ว!")
+        try:
+            import sqlite3
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("UPDATE company_settings SET company_name=?, company_address=?, company_tax_id=?, company_tel=? WHERE id=1",
+                     (company_name, company_address, company_tax_id, company_tel))
+            conn.commit()
+            conn.close()
+            st.success("✅ บันทึกข้อมูลบริษัทแล้ว!")
+        except Exception as e:
+            st.error(f"Error: {e}")
     
     st.markdown("---")
     st.markdown("### 📋 Tax Settings")
