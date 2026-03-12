@@ -2003,7 +2003,10 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     subtotal = float(invoice_data.get('total_amount', 0) or 0)
     exchange_rate = float(invoice_data.get('exchange_rate', 1) or 1)
     currency = invoice_data.get('currency', 'USD')
+    # Calculate THB if not already set
     total_thb = float(invoice_data.get('total_thb', 0) or 0)
+    if total_thb == 0 and subtotal > 0:
+        total_thb = subtotal * exchange_rate
     vat = total_thb - (total_thb / 1.07)
     
     # Summary
@@ -2017,10 +2020,25 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     with col4:
         st.metric("Total (THB)", f"฿{total_thb:,.2f}")
     
-    # Items table
+    # Items table - safe loading
     st.markdown("#### รายการ")
-    df = pd.DataFrame(invoice_data['items'])
-    st.dataframe(df[['item_no', 'description', 'amount', 'vat_rate', 'vat_amount']], use_container_width=True)
+    try:
+        # Try to get items from various sources
+        items = invoice_data.get('items', [])
+        if not items and invoice_data.get('items_json'):
+            import json
+            items = json.loads(invoice_data.get('items_json', '[]'))
+        
+        if not items:
+            st.info("ไม่มีรายการสินค้า")
+        else:
+            df = pd.DataFrame(items)
+            if not df.empty:
+                st.dataframe(df, use_container_width=True)
+            else:
+                st.info("ไม่มีรายการสินค้า")
+    except Exception as e:
+        st.info(f"ไม่สามารถโหลดรายการได้: {e}")
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
