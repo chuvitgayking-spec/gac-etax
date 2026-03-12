@@ -2102,36 +2102,9 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         total_thb = subtotal * exchange_rate
     vat = total_thb - (total_thb / 1.07)
     
-    # Summary
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Invoice No", invoice_data.get('invoice_no', '-'))
-    with col2:
-        st.metric(f"Subtotal ({currency})", f"{subtotal:,.2f}")
-    with col3:
-        st.metric("Rate", f"฿{exchange_rate:.2f}")
-    with col4:
-        st.metric("Total (THB)", f"฿{total_thb:,.2f}")
+    # Show summary before A4
     
-    # Items table - safe loading
-    st.markdown("#### รายการ")
-    try:
-        # Try to get items from various sources
-        items = invoice_data.get('items', [])
-        if not items and invoice_data.get('items_json'):
-            import json
-            items = json.loads(invoice_data.get('items_json', '[]'))
-        
-        if not items:
-            st.info("ไม่มีรายการสินค้า")
-        else:
-            df = pd.DataFrame(items)
-            if not df.empty:
-                st.dataframe(df, use_container_width=True)
-            else:
-                st.info("ไม่มีรายการสินค้า")
-    except Exception as e:
-        st.info(f"ไม่สามารถโหลดรายการได้: {e}")
+    # Get items for A4 preview only (not shown separately)
     
     # Virtual A4 Document Preview
     st.markdown("---")
@@ -2222,9 +2195,7 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
         </div>
     </div>"""
     
-    st.markdown('<div class="invoice-wrapper">', unsafe_allow_html=True)
-    st.components.v1.html(a4_html, height=1000, scrolling=True)
-    st.markdown('</div><br>', unsafe_allow_html=True)
+    st.markdown(f'<div style="background-color: #f2f2f2; padding: 50px 0;">{a4_html}</div>', unsafe_allow_html=True)
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
