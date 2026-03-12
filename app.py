@@ -167,6 +167,13 @@ def load_invoices_from_db():
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+        
+        # Check table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invoices'")
+        if not cursor.fetchone():
+            # Table doesn't exist, create it
+            init_database()
+        
         cursor.execute('SELECT * FROM invoices ORDER BY created_at DESC LIMIT 50')
         rows = cursor.fetchall()
         conn.close()
@@ -196,8 +203,10 @@ def get_db_connection():
 
 def init_database():
     """Initialize database tables with defensive migration"""
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    import traceback
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
     
     # Expected columns (14 + id + created_at)
     EXPECTED_COLS = [
@@ -247,7 +256,8 @@ def init_database():
             print("Created invoices table with correct schema")
         
     except Exception as e:
-        print(f"Database init error: {e}")
+        err_msg = f"Database init error: {e}\n{traceback.format_exc()}"
+        print(err_msg)
         # Last resort: drop and recreate
         try:
             cursor.execute("DROP TABLE IF EXISTS invoices")
@@ -271,8 +281,15 @@ def init_database():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-        except:
-            pass
+            conn.commit()
+        except Exception as final_err:
+            print(f"Final error: {final_err}")
+    
+    try:
+        conn.commit()
+        conn.close()
+    except:
+        pass
     
     # Running number table
     cursor.execute('''
