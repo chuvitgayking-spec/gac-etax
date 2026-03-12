@@ -1381,7 +1381,7 @@ def show_invoice_list():
     selected_idx = st.selectbox("เลือก Invoice ที่จะออกใบเสร็จ:", range(len(options)), format_func=lambda x: options[x])
     
     # Show selected invoice details
-    inv = invoices[selected_idx]
+    inv = filtered_invoices[selected_idx]
     
     with st.expander(f"✏️ ออกใบเสร็จ: {inv.get('filename', inv.get('invoice_no', 'Invoice'))}", expanded=True):
         # Edit form
@@ -1432,14 +1432,14 @@ def show_invoice_list():
         
         # Update button
         if st.button("💾 บันทึกการแก้ไข", key=f"save_{selected_idx}"):
-            invoices[selected_idx]['invoice_no'] = new_inv_no
-            invoices[selected_idx]['invoice_date'] = new_date
-            invoices[selected_idx]['customer_name'] = new_customer
-            invoices[selected_idx]['address'] = new_address
-            invoices[selected_idx]['exchange_rate'] = new_rate
+            filtered_invoices[selected_idx]['invoice_no'] = new_inv_no
+            filtered_invoices[selected_idx]['invoice_date'] = new_date
+            filtered_invoices[selected_idx]['customer_name'] = new_customer
+            filtered_invoices[selected_idx]['address'] = new_address
+            filtered_invoices[selected_idx]['exchange_rate'] = new_rate
             
             # Recalculate totals
-            recalculate_invoice(invoices[selected_idx])
+            recalculate_invoice(filtered_invoices[selected_idx])
             
             st.success("✅ บันทึกสำเร็จ!")
             st.rerun()
