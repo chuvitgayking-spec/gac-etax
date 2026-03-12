@@ -317,22 +317,21 @@ def save_invoice(invoice_data):
     cursor = conn.cursor()
     
     cursor.execute('''
-        INSERT OR REPLACE INTO invoices (
-            invoice_no, running_no, customer_name, customer_address, invoice_date,
-            subtotal, vat_amount, total_amount, total_thb,
-            exchange_rate, file_source
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO invoices (
+            invoice_no, customer_name, customer_address, invoice_date,
+            exchange_rate, total_amount, total_thb,
+            status, currency
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
-        invoice_data['invoice_no'],
-        invoice_data['running_no'],
-        invoice_data['customer_name'],
-        invoice_data['invoice_date'],
-        float(invoice_data['subtotal']),
-        float(invoice_data['vat_amount']),
-        float(invoice_data['total_amount']),
-        float(invoice_data['total_thb']),
-        float(invoice_data['exchange_rate']),
-        invoice_data.get('file_source', '')
+        invoice_data.get('invoice_no', ''),
+        invoice_data.get('customer_name', ''),
+        invoice_data.get('customer_address', ''),
+        invoice_data.get('invoice_date', ''),
+        invoice_data.get('exchange_rate', 1),
+        invoice_data.get('total_amount', 0),
+        invoice_data.get('total_thb', 0),
+        'uploaded',
+        invoice_data.get('currency', 'USD')
     ))
     
     conn.commit()
@@ -857,21 +856,27 @@ def show_upload():
                         if not inv:
                             continue
                         items_json = json.dumps(inv.get('items', []))
-                        cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                             (inv.get('filename', ''),
-                              inv.get('invoice_no', ''),
-                              inv.get('invoice_date', ''),
-                              inv.get('customer_name', ''),
-                              inv.get('customer_address', ''),
-                              inv.get('job_number', ''),
-                              inv.get('awb', ''),
-                              inv.get('job_ref', ''),
-                              inv.get('exchange_rate', 1),
-                              inv.get('total_amount', 0),
-                              inv.get('total_thb', 0),
-                              items_json,
-                              'uploaded',
-                              inv.get('currency', 'USD')))
+                        try:
+                            values = (
+                                inv.get('filename', ''),
+                                inv.get('invoice_no', ''),
+                                inv.get('invoice_date', ''),
+                                inv.get('customer_name', ''),
+                                inv.get('customer_address', ''),
+                                inv.get('job_number', ''),
+                                inv.get('awb', ''),
+                                inv.get('job_ref', ''),
+                                inv.get('exchange_rate', 1),
+                                inv.get('total_amount', 0),
+                                inv.get('total_thb', 0),
+                                items_json,
+                                'uploaded',
+                                inv.get('currency', 'USD')
+                            )
+                            cursor.execute("""INSERT INTO invoices (filename, invoice_no, invoice_date, customer_name, customer_address, job_number, awb, job_ref, exchange_rate, total_amount, total_thb, items_json, status, currency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", values)
+                        except Exception as insert_err:
+                            st.error(f"Insert error: {insert_err}")
+                            continue
                         saved += 1
                     conn.commit()
                     conn.close()
