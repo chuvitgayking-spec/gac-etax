@@ -6,42 +6,42 @@ from reportlab.lib.units import cm
 from io import BytesIO
 
 def generate_receipt_pdf(invoice_data):
-    """Generate receipt PDF matching the detailed Thai GAC template"""
+    """Generate receipt PDF matching HTML preview exactly"""
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*cm, bottomMargin=0.5*cm, leftMargin=1*cm, rightMargin=1*cm)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*cm, bottomMargin=0.5*cm, leftMargin=1.5*cm, rightMargin=1.5*cm)
     
     elements = []
     
-    # Header
+    # ===== HEADER =====
+    # Header table - Left: Tax ID, Right: Company Info
     header_data = [
         ['เลขประจำตัวผู้เสียภาษีอากร / Tax ID No. 0105535169497\nทะเบียนการค้า / Registration No. 0105535169497',
          'GULF AGENCY COMPANY (THAILAND) LTD.\nบริษัท กัลฟ์ เอเจนซี่ คัมปะนี (ประเทศไทย) จำกัด\n26/30-31 ชั้น 9 อาคารอรกาน์ ซอยชิดลม ถนนพระราม 4\nแขวงลุมพินี เขตปางคอยแหลม กรุงเทพมหานคร 10330\nTel: 02-650-7400 | Email: thailand@gac.com']
     ]
-    header_table = Table(header_data, colWidths=[9*cm, 9*cm])
+    header_table = Table(header_data, colWidths=[8.5*cm, 9.5*cm])
     header_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
     ]))
     elements.append(header_table)
-    elements.append(Spacer(1, 0.3*cm))
+    elements.append(Spacer(1, 0.2*cm))
     
-    # Title
-    title_style = ParagraphStyle('Title', fontSize=16, bold=True, alignment=1)
+    # ===== TITLE =====
+    title_style = ParagraphStyle('Title', fontSize=18, bold=True, alignment=1, textColor=colors.black)
     elements.append(Paragraph("RECEIPT COPY / TAX INVOICE COPY", title_style))
     elements.append(Spacer(1, 0.3*cm))
     
-    # Get data
+    # ===== CUSTOMER & DOC INFO =====
     invoice_no = invoice_data.get('invoice_no', '-')
     running_no = invoice_data.get('running_no', 'Draft')
     invoice_date = invoice_data.get('invoice_date', '-')
     customer = invoice_data.get('customer_name', 'Customer')
-    customer_address = invoice_data.get('customer_address', '')[:100]
+    customer_address = invoice_data.get('customer_address', '')
     
-    # Customer table
     cust_data = [
-        ['ชื่อลูกค้า / Customer Name:\n' + customer + '\n' + customer_address,
+        ['ชื่อลูกค้า / Customer Name:\n' + customer + '\n' + customer_address[:80],
          'No. / เลขที่: ' + str(running_no) + '\nDate / วันที่: ' + str(invoice_date) + '\nInvoice No: ' + str(invoice_no)]
     ]
     cust_table = Table(cust_data, colWidths=[10*cm, 8*cm])
@@ -50,12 +50,12 @@ def generate_receipt_pdf(invoice_data):
         ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
     ]))
     elements.append(cust_table)
     elements.append(Spacer(1, 0.3*cm))
     
-    # Items
+    # ===== ITEMS TABLE =====
     items = invoice_data.get('items', [])
     if not items:
         items = [{'description': 'Service Charges', 'amount': 0}]
@@ -85,12 +85,12 @@ def generate_receipt_pdf(invoice_data):
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
     ]))
     elements.append(items_table)
     elements.append(Spacer(1, 0.3*cm))
     
-    # Totals
+    # ===== TOTALS =====
     totals_data = [
         ['รวมเงิน / Subtotal:', f"{subtotal:,.2f}"],
         ['ภาษีมูลค่าเพิ่ม 7% / VAT 7%:', f"{vat_total:,.2f}"],
@@ -110,9 +110,9 @@ def generate_receipt_pdf(invoice_data):
     elements.append(totals_table)
     elements.append(Spacer(1, 0.5*cm))
     
-    # Footer
+    # ===== FOOTER =====
     footer_data = [
-        ['วิธีการชำระเงิน / Payment Method:\nCash  Credit  Cheque\nBank: Bangkok Bank | A/C: 123-456-7890',
+        ['วิธีการชำระเงิน / Payment Method:\n☐ เงินสด / Cash  ☐ เครดิต / Credit  ☐ เช็ค / Cheque\nBank: Bangkok Bank | A/C: 123-456-7890',
          '________________________\nผู้เก็บเงิน / Bill Collector\n\n________________________\nAccountant']
     ]
     footer_table = Table(footer_data, colWidths=[12*cm, 6*cm])
@@ -123,13 +123,13 @@ def generate_receipt_pdf(invoice_data):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
     ]))
     elements.append(footer_table)
-    
-    # Disclaimer / Standard conditions
     elements.append(Spacer(1, 0.3*cm))
-    disc_style = ParagraphStyle('Disc', fontSize=7, alignment=0, spaceAfter=3)
+    
+    # ===== DISCLAIMER =====
+    disc_style = ParagraphStyle('Disc', fontSize=7, alignment=0, spaceAfter=4, leftIndent=0)
     elements.append(Paragraph("<b>All business is undertaken subject to our Standard Trading Conditions of Carriage, which are incorporated into all contracts of carriage to which we are a party.</b>", disc_style))
-    elements.append(Paragraph("<b>ใบเสร็จรับเงินนี้จะสมบูรณ์ต่อเมื่อมีลายเซ็นของผู้มีอำนาจและพนักงานเก็บเงินของบริษัทฯ</b>", disc_style))
-    elements.append(Paragraph("<i>This receipt is not valid unless signed by authorized person and collector.</i>", disc_style))
+    elements.append(Paragraph("<b>ใบเสร็จรับเงินนี้จะสมบูรณ์ต่อเมื่อมีลายเซ็นของผู้มีอำนาจและพนักงานเก็บเงินของบริษัทฯ กรณีชำระด้วยเช็ค ใบเสร็จรับเงินนี้จะสมบูรณ์ต่อเมื่อบริษัทฯ ได้รับชำระเงินตามเช็คเรียบร้อยแล้ว</b>", disc_style))
+    elements.append(Paragraph("<i>This receipt is not valid unless signed by authorized person and collector. If payment is made by cheque, this receipt will be valid only when the cheque has been honoured.</i>", disc_style))
     
     doc.build(elements)
     buffer.seek(0)
