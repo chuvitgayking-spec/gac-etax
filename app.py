@@ -554,82 +554,140 @@ def get_exchange_rate_from_api(date_str=None):
 # ============================================
 
 def generate_pdf(invoice_data):
-    """Generate PDF in memory"""
+    """Generate receipt PDF matching the detailed Thai GAC template"""
     from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.pagesizes import A4
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm, cm
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import cm
+    from io import BytesIO
     
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), rightMargin=15*mm, leftMargin=15*mm, topMargin=10*mm, bottomMargin=10*mm)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*cm, bottomMargin=0.5*cm, leftMargin=1*cm, rightMargin=1*cm)
     
-    styles = getSampleStyleSheet()
-    story = []
+    elements = []
     
-    # Header
-    story.append(Paragraph(f"<b>{COMPANY_NAME}</b>", ParagraphStyle('Title', parent=styles['Heading1'], fontSize=14, alignment=TA_CENTER)))
-    story.append(Paragraph(f"TAX ID: {COMPANY_TAX_ID}", ParagraphStyle('Normal', fontSize=10, alignment=TA_CENTER)))
-    story.append(Spacer(1, 10))
-    
-    # Invoice Info
-    info_data = [
-        ['Invoice No:', invoice_data.get('invoice_no', ''), 'Running No:', invoice_data.get('running_no', '')],
-        ['Customer:', invoice_data.get('customer_name', ''), 'Address:', invoice_data.get('address', '')]
+    # Header - Left side (Tax ID)
+    header_data = [
+        ['เลขประจำตัวผู้เสียภาษีอากร / Tax ID No. 0105535169497' + chr(10) + 'ทะเบียนการค้า / Registration No. 0105535169497',
+         'GULF AGENCY COMPANY (THAILAND) LTD.' + chr(10) + 'บริษัท กัลฟ์ เอเจนซี่ คัมปะนี (ประเทศไทย) จำกัด' + chr(10) + '26/30-31 ชั้น 9 อาคารอรกาน์ ซอยชิดลม ถนนพระราม 4' + chr(10) + 'แขวงลุมพินี เขตปางคอยแหลม กรุงเทพมหานคร 10330' + chr(10) + 'Tel: 02-650-7400 | Email: thailand@gac.com']
     ]
-    info_table = Table(info_data, colWidths=[3*cm, 6*cm, 3*cm, 6*cm])
-    info_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
+    header_table = Table(header_data, colWidths=[9*cm, 9*cm])
+    header_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (0, 0), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
     ]))
-    story.append(info_table)
-    story.append(Spacer(1, 10))
+    elements.append(header_table)
+    elements.append(Spacer(1, 0.3*cm))
     
-    # Items
-    table_data = [['No', 'Description', 'Amount (THB)', 'VAT%', 'VAT', 'Amount (THB)']]
+    # Title
+    title_style = ParagraphStyle('Title', fontSize=16, bold=True, alignment=1)
+    elements.append(Paragraph("RECEIPT COPY / TAX INVOICE COPY", title_style))
+    elements.append(Spacer(1, 0.3*cm))
     
-    for item in invoice_data.get('items', []):
-        table_data.append([
-            str(item['item_no']),
-            item['description'][:30],
-            f"${float(item['amount']):,.2f}",
-            f"{item.get('vat_rate', '7')}%",
-            f"${float(item.get('vat_amount', 0)):.2f}",
-            f"฿{float(item['amount']) * float(invoice_data.get('exchange_rate', 30)):.2f}"
-        ])
+    # Get data
+    invoice_no = invoice_data.get('invoice_no', '-')
+    running_no = invoice_data.get('running_no', 'Draft')
+    invoice_date = invoice_data.get('invoice_date', '-')
+    customer = invoice_data.get('customer_name', 'Customer')
+    customer_address = invoice_data.get('customer_address', '')[:100]
     
-    items_table = Table(table_data, colWidths=[1*cm, 7*cm, 3*cm, 2*cm, 2*cm, 4*cm])
+    # Customer & Document Info table
+    cust_data = [
+        ['ชื่อลูกค้า / Customer Name:' + chr(10) + customer + chr(10) + customer_address,
+         'No. / เลขที่: ' + str(running_no) + chr(10) + 'Date / วันที่: ' + str(invoice_date) + chr(10) + 'Invoice No: ' + str(invoice_no)]
+    ]
+    cust_table = Table(cust_data, colWidths=[10*cm, 8*cm])
+    cust_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(cust_table)
+    elements.append(Spacer(1, 0.3*cm))
+    
+    # Items Table
+    items = invoice_data.get('items', [])
+    if not items:
+        items = [{'description': 'Service Charges', 'amount': 0}]
+    
+    table_data = [['รายการ / Description', 'จำนวนเงิน / Amount', 'VAT 7%', 'Total (THB)']]
+    
+    total_amt = 0
+    total_vat = 0
+    
+    for item in items[:15]:
+        desc = item.get('description', '-')[:40]
+        amt = float(item.get('amount', 0))
+        vat = amt * 0.07
+        total_amt += amt
+        total_vat += vat
+        table_data.append([desc, f"{amt:,.2f}", f"{vat:,.2f}", f"{amt:,.2f}"])
+    
+    # Calculate totals
+    exchange_rate = float(invoice_data.get('exchange_rate', 1) or 1)
+    total_usd = float(invoice_data.get('total_amount', 0) or 0)
+    total_thb = float(invoice_data.get('total_thb', 0) or 0)
+    if total_thb == 0 and total_usd > 0:
+        total_thb = total_usd * exchange_rate
+    vat = total_thb - (total_thb / 1.07)
+    subtotal = total_thb - vat
+    
+    items_table = Table(table_data, colWidths=[9*cm, 3*cm, 3*cm, 3*cm])
     items_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eeeeee')),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
     ]))
-    story.append(items_table)
-    story.append(Spacer(1, 10))
+    elements.append(items_table)
+    elements.append(Spacer(1, 0.3*cm))
     
-    # Totals in both USD and THB
-    totals = [
-        ['Subtotal:', f"฿{float(invoice_data.get('total_amount', 0) or 0) * float(invoice_data.get('exchange_rate', 1) or 1):,.2f}"],
-        ['VAT 7%:', f"฿{float(invoice_data.get('vat_amount', 0) or 0):,.2f}"],
-        ['TOTAL:', f"฿{float(invoice_data.get('total_thb', 0) or 0):,.2f}"],
-
+    # Totals
+    totals_data = [
+        ['รวมเงิน / Subtotal:', f"{subtotal:,.2f}"],
+        ['ภาษีมูลค่าเพิ่ม 7% / VAT 7%:', f"{vat:,.2f}"],
+        ['จำนวนเงินรวม / GRAND TOTAL:', f"{total_thb:,.2f}"]
     ]
+    totals_table = Table(totals_data, colWidths=[14*cm, 4*cm])
+    totals_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 12),
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(totals_table)
+    elements.append(Spacer(1, 0.5*cm))
     
-    totals_table = Table(totals, colWidths=[4*cm, 3*cm, 4*cm, 4*cm])
-
-    story.append(totals_table)
+    # Footer
+    footer_data = [
+        ['วิธีการชำระเงิน / Payment Method:' + chr(10) + 'Cash  Credit  Cheque' + chr(10) + 'Bank: Bangkok Bank | A/C: 123-456-7890',
+         '________________________' + chr(10) + 'ผู้เก็บเงิน / Bill Collector' + chr(10) + chr(10) + '________________________' + chr(10) + 'Accountant']
+    ]
+    footer_table = Table(footer_data, colWidths=[12*cm, 6*cm])
+    footer_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(footer_table)
     
-    doc.build(story)
+    doc.build(elements)
     buffer.seek(0)
     return buffer
 
-# ============================================
-# XML GENERATOR (ISO 20022)
-# ============================================
 
 def generate_xml(invoice_data):
     """Generate e-Tax XML in memory"""
