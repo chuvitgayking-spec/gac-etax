@@ -567,7 +567,7 @@ def generate_pdf(invoice_data):
     
     # Totals in both USD and THB
     totals = [
-        ['Subtotal:', f"฿{float(invoice_data['subtotal']) * float(invoice_data['exchange_rate']):,.2f}"],
+        ['Subtotal:', f"฿{float(invoice_data.get('total_amount', 0)) * float(invoice_data.get('exchange_rate', 1)):, .2f}"],
         ['VAT 7%:', f"฿{float(invoice_data['vat_amount']) * float(invoice_data['exchange_rate']):,.2f}"],
         ['TOTAL:', f"฿{float(invoice_data['total_thb']):,.2f}"],\
 
@@ -618,7 +618,7 @@ def generate_xml(invoice_data):
     
     # Summary
     summary = etree.SubElement(root, 'Summary')
-    etree.SubElement(summary, 'SubTotal').text = str(invoice_data['subtotal'])
+    etree.SubElement(summary, 'SubTotal').text = str(invoice_data.get('total_amount', 0))
     etree.SubElement(summary, 'VatTotal').text = str(invoice_data['vat_amount'])
     etree.SubElement(summary, 'TotalAmount').text = str(invoice_data['total_amount'])
     etree.SubElement(summary, 'CurrencyCode').text = 'USD'
