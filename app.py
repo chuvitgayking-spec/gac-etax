@@ -53,11 +53,11 @@ IS_CLOUD = os.environ.get('STREAMLIT_SHARED') is not None or os.path.exists('/mo
 # Use cloud path on Streamlit Cloud, local path otherwise
 if IS_CLOUD or platform.system() != 'Darwin':
     # Cloud deployment
-    DEFAULT_DB = '/tmp/invoices.db'
+    DEFAULT_DB = '/tmp/gac_etax_v2.db'
     DEFAULT_UPLOAD = '/tmp/uploads'
 else:
     # Local Mac deployment
-    DEFAULT_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'invoices.db')
+    DEFAULT_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'gac_etax_v2.db')
     DEFAULT_UPLOAD = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'uploads')
 
 DB_PATH = os.environ.get('DB_PATH', DEFAULT_DB)
@@ -195,59 +195,84 @@ def get_db_connection():
     return conn
 
 def init_database():
-    """Initialize database tables with migration support"""
+    """Initialize database tables with defensive migration"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Create tables if not exist (with proper migration)
+    # Expected columns (14 + id + created_at)
+    EXPECTED_COLS = [
+        'id', 'filename', 'invoice_no', 'invoice_date', 'customer_name',
+        'customer_address', 'job_number', 'awb', 'job_ref', 'exchange_rate',
+        'total_amount', 'total_thb', 'items_json', 'status', 'currency', 'created_at'
+    ]
+    
     try:
-        # Try to create invoices table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS invoices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                filename TEXT,
-                invoice_no TEXT,
-                invoice_date TEXT,
-                customer_name TEXT,
-                customer_address TEXT,
-                job_number TEXT,
-                awb TEXT,
-                job_ref TEXT,
-                exchange_rate REAL DEFAULT 1,
-                total_amount REAL,
-                total_thb REAL,
-                items_json TEXT,
-                status TEXT DEFAULT 'pending',
-                currency TEXT DEFAULT 'USD',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        # Check if table exists and has correct schema
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invoices'")
+        table_exists = cursor.fetchone() is not None
         
-        # Migration: Add missing columns if table exists but missing columns
-        cursor.execute("PRAGMA table_info(invoices)")
-        existing_cols = [row[1] for row in cursor.fetchall()]
+        if table_exists:
+            # Get existing columns
+            cursor.execute("PRAGMA table_info(invoices)")
+            existing_cols = [row[1] for row in cursor.fetchall()]
+            
+            # If columns don't match, drop and recreate
+            if len(existing_cols) != len(EXPECTED_COLS):
+                print(f"Schema mismatch: {len(existing_cols)} cols vs {len(EXPECTED_COLS)} expected. Recreating...")
+                cursor.execute("DROP TABLE invoices")
+                table_exists = False
         
-        migrations = {
-            'filename': 'TEXT',
-            'customer_address': 'TEXT',
-            'job_number': 'TEXT',
-            'awb': 'TEXT',
-            'job_ref': 'TEXT',
-            'exchange_rate': 'REAL DEFAULT 1',
-            'items_json': 'TEXT',
-            'status': "TEXT DEFAULT 'pending'",
-            'currency': "TEXT DEFAULT 'USD'"
-        }
-        
-        for col, col_type in migrations.items():
-            if col not in existing_cols:
-                try:
-                    cursor.execute(f"ALTER TABLE invoices ADD COLUMN {col} {col_type}")
-                except:
-                    pass  # Column might already exist
+        if not table_exists:
+            # Create table with correct schema (14 columns + id + created_at)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS invoices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    filename TEXT,
+                    invoice_no TEXT,
+                    invoice_date TEXT,
+                    customer_name TEXT,
+                    customer_address TEXT,
+                    job_number TEXT,
+                    awb TEXT,
+                    job_ref TEXT,
+                    exchange_rate REAL DEFAULT 1,
+                    total_amount REAL,
+                    total_thb REAL,
+                    items_json TEXT,
+                    status TEXT DEFAULT 'pending',
+                    currency TEXT DEFAULT 'USD',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            print("Created invoices table with correct schema")
         
     except Exception as e:
         print(f"Database init error: {e}")
+        # Last resort: drop and recreate
+        try:
+            cursor.execute("DROP TABLE IF EXISTS invoices")
+            cursor.execute("""
+                CREATE TABLE invoices (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    filename TEXT,
+                    invoice_no TEXT,
+                    invoice_date TEXT,
+                    customer_name TEXT,
+                    customer_address TEXT,
+                    job_number TEXT,
+                    awb TEXT,
+                    job_ref TEXT,
+                    exchange_rate REAL DEFAULT 1,
+                    total_amount REAL,
+                    total_thb REAL,
+                    items_json TEXT,
+                    status TEXT DEFAULT 'pending',
+                    currency TEXT DEFAULT 'USD',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        except:
+            pass
     
     # Running number table
     cursor.execute('''
@@ -316,20 +341,28 @@ def save_invoice(invoice_data):
     conn = get_db_connection()
     cursor = conn.cursor()
     
+    items_list = invoice_data.get('items', [])
+    items_json = json.dumps(items_list) if not isinstance(items_list, str) else items_list
+    
     cursor.execute('''
         INSERT INTO invoices (
-            invoice_no, customer_name, customer_address, invoice_date,
-            exchange_rate, total_amount, total_thb,
-            status, currency
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            filename, invoice_no, invoice_date, customer_name, customer_address,
+            job_number, awb, job_ref, exchange_rate, total_amount, total_thb,
+            items_json, status, currency
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
+        invoice_data.get('filename', ''),
         invoice_data.get('invoice_no', ''),
+        invoice_data.get('invoice_date', ''),
         invoice_data.get('customer_name', ''),
         invoice_data.get('customer_address', ''),
-        invoice_data.get('invoice_date', ''),
+        invoice_data.get('job_number', ''),
+        invoice_data.get('awb', ''),
+        invoice_data.get('job_ref', ''),
         invoice_data.get('exchange_rate', 1),
         invoice_data.get('total_amount', 0),
         invoice_data.get('total_thb', 0),
+        items_json,
         'uploaded',
         invoice_data.get('currency', 'USD')
     ))
