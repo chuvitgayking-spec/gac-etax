@@ -2002,7 +2002,54 @@ def show_batch_preview():
         show_single_invoice_preview(inv, key_suffix="_batch_selected")
 
 def show_single_invoice_preview(invoice_data, key_suffix=""):
-    """Preview a single invoice"""
+    """Preview a single invoice with A4 styling"""
+    
+    # Add A4 styling CSS
+    st.markdown("""
+    <style>
+    .invoice-a4 {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 20px auto;
+        font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .invoice-header {
+        border-bottom: 2px solid #0066b2;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+    }
+    .invoice-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #0066b2;
+    }
+    .invoice-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    .invoice-table th {
+        background: #f0f2f6;
+        padding: 10px;
+        text-align: left;
+        border-bottom: 2px solid #ddd;
+    }
+    .invoice-table td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    .invoice-total {
+        background: #f0f2f6;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Get values with safe .get()
     subtotal = float(invoice_data.get('total_amount', 0) or 0)
     exchange_rate = float(invoice_data.get('exchange_rate', 1) or 1)
@@ -2043,6 +2090,92 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
                 st.info("ไม่มีรายการสินค้า")
     except Exception as e:
         st.info(f"ไม่สามารถโหลดรายการได้: {e}")
+    
+    # Virtual A4 Document Preview
+    st.markdown("---")
+    st.markdown("### 📄 ตัวอย่างเอกสาร (A4)")
+    
+    # Get all values
+    invoice_no = invoice_data.get('invoice_no', '-')
+    customer = invoice_data.get('customer_name', 'Customer')
+    address = invoice_data.get('customer_address', '')
+    date = invoice_data.get('invoice_date', '')
+    running = invoice_data.get('running_no', 'Draft')
+    
+    # Build A4 HTML
+    a4_html = f"""
+    <div class="invoice-a4">
+        <div class="invoice-header">
+            <div class="invoice-title">🧾 RECEIPT</div>
+            <div>GAC Thailand Co., Ltd.</div>
+            <div style="font-size:12px;color:#666;">26/30-31 9th Fl., Orakarn Bldg., Soi Chidlom, Bangkok 10300</div>
+        </div>
+        <table class="invoice-table">
+            <tr>
+                <td><b>Receipt No:</b> {running}</td>
+                <td style="text-align:right;"><b>Date:</b> {date}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><b>Invoice No:</b> {invoice_no}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><b>Customer:</b> {customer}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><b>Address:</b> {address[:50]}...</td>
+            </tr>
+        </table>
+        
+        <table class="invoice-table">
+            <tr>
+                <th>รายการ</th>
+                <th style="text-align:right;">จำนวนเงิน</th>
+            </tr>"""
+    
+    # Add items to HTML
+    try:
+        items = invoice_data.get('items', [])
+        if not items and invoice_data.get('items_json'):
+            import json
+            items = json.loads(invoice_data.get('items_json', '[]'))
+        
+        for item in items[:10]:  # Show max 10 items
+            desc = item.get('description', item.get('desc', '-'))[:40]
+            amt = float(item.get('amount', 0))
+            a4_html += f"""
+            <tr>
+                <td>{desc}</td>
+                <td style="text-align:right;">฿{amt:,.2f}</td>
+            </tr>"""
+    except:
+        pass
+    
+    a4_html += f"""
+        </table>
+        
+        <div class="invoice-total">
+            <table style="width:100%;">
+                <tr>
+                    <td><b>Subtotal ({currency}):</b></td>
+                    <td style="text-align:right;"><b>฿{subtotal:,.2f}</b></td>
+                </tr>
+                <tr>
+                    <td><b>VAT 7%:</b></td>
+                    <td style="text-align:right;"><b>฿{vat:,.2f}</b></td>
+                </tr>
+                <tr style="font-size:18px;">
+                    <td><b>TOTAL (THB):</b></td>
+                    <td style="text-align:right;"><b style="color:#0066b2;">฿{total_thb:,.2f}</b></td>
+                </tr>
+            </table>
+        </div>
+        
+        <div style="text-align:center;margin-top:30px;font-size:12px;color:#888;">
+            Thank you for your business!
+        </div>
+    </div>"""
+    
+    st.markdown(a4_html, unsafe_allow_html=True)
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
