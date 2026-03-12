@@ -2037,165 +2037,67 @@ def show_batch_preview():
 def show_single_invoice_preview(invoice_data, key_suffix=""):
     """Preview a single invoice with A4 styling"""
     
-    # Add GAC-style A4 CSS
-    st.markdown("""
-    <style>
-    @page { size: A4; margin: 0; }
-    * { color: #000000 !important; }
-    body { margin: 0; }
-    .invoice-wrapper {
-        background-color: #f0f2f6;
-        padding: 40px 0;
-        display: flex;
-        justify-content: center;
-    }
-    .invoice-box {
-        width: 210mm;
-        min-height: 297mm;
-        padding: 20mm;
-        margin: auto;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        background: #ffffff !important;
-    }
-    .invoice-header {
-        border-bottom: 2px solid #0066b2;
-        padding-bottom: 15px;
-        margin-bottom: 20px;
-    }
-    .invoice-title {
-        font-size: 28px;
-        font-weight: bold;
-        color: #0066b2 !important;
-    }
-    .invoice-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 20px 0;
-    }
-    .invoice-table th {
-        background: #e8e8e8;
-        padding: 12px;
-        text-align: left;
-        border: 1px solid #333;
-    }
-    .invoice-table td {
-        padding: 10px;
-        border: 1px solid #333;
-    }
-    .invoice-total {
-        background: #e8e8e8;
-        padding: 20px;
-        border-radius: 8px;
-        margin-top: 30px;
-        border: 1px solid #333;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Get values with safe .get()
+    # Get values
     subtotal = float(invoice_data.get('total_amount', 0) or 0)
     exchange_rate = float(invoice_data.get('exchange_rate', 1) or 1)
     currency = invoice_data.get('currency', 'USD')
-    # Calculate THB if not already set
     total_thb = float(invoice_data.get('total_thb', 0) or 0)
     if total_thb == 0 and subtotal > 0:
         total_thb = subtotal * exchange_rate
     vat = total_thb - (total_thb / 1.07)
     
-    # Show summary before A4
-    
-    # Get items for A4 preview only (not shown separately)
-    
-    # Virtual A4 Document Preview
-    st.markdown("---")
-    st.markdown("### 📄 ตัวอย่างเอกสาร (A4)")
-    
-    # Get all values
     invoice_no = invoice_data.get('invoice_no', '-')
     customer = invoice_data.get('customer_name', 'Customer')
-    address = invoice_data.get('customer_address', '')
+    address = invoice_data.get('customer_address', '')[:80]
     date = invoice_data.get('invoice_date', '')
     running = invoice_data.get('running_no', 'Draft')
     
-    # Build A4 HTML
+    # Build clean A4 HTML
     a4_html = f"""
-    <div class="invoice-box">
-        <div class="invoice-header">
-            <div class="invoice-title">🧾 RECEIPT / TAX INVOICE</div>
-            <div style="font-size:16px;font-weight:bold;color:#000000;">Gulf Agency Company (Thailand) Ltd.</div>
-            <div style="font-size:12px;color:#666;">26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330</div>
-            <div style="font-size:11px;color:#888;">Tax ID: 0105535169497 | Tel: 02-650-7400</div>
-        </div>
-        <table class="invoice-table">
-            <tr>
-                <td><b>Receipt No:</b> {running}</td>
-                <td style="text-align:right;"><b>Date:</b> {date}</td>
-            </tr>
-            <tr>
-                <td colspan="2"><b>Invoice No:</b> {invoice_no}</td>
-            </tr>
-            <tr>
-                <td colspan="2"><b>Customer:</b> {customer}</td>
-            </tr>
-            <tr>
-                <td colspan="2"><b>Address:</b> {address[:50]}...</td>
-            </tr>
-        </table>
-        
-        <table class="invoice-table">
-            <tr>
-                <th>Description</th>
-                <th style="text-align:right;">NON VAT</th>
-                <th style="text-align:right;">VAT 7%</th>
-                <th style="text-align:right;">Amount (THB)</th>
-            </tr>"""
+<style>
+.inv-box {width:210mm;min-height:297mm;padding:20mm;margin:auto;background:#fff;box-shadow:0 0 10px rgba(0,0,0,0.1);font-family:Arial,sans-serif;}
+.inv-title {font-size:24px;font-weight:bold;color:#0066b2;border-bottom:2px solid #0066b2;padding-bottom:10px;}
+.inv-table {width:100%;border-collapse:collapse;margin:15px 0;}
+.inv-table th {background:#eee;padding:8px;border:1px solid #333;text-align:left;}
+.inv-table td {padding:8px;border:1px solid #333;}
+.inv-total {background:#eee;padding:15px;border-radius:5px;margin-top:20px;border:1px solid #333;}
+</style>
+<div style="background:#f0f2f6;padding:30px 0;min-height:100vh;">
+<div class="inv-box">
+<div class="inv-title">RECEIPT / TAX INVOICE</div>
+<div style="font-weight:bold;margin-top:10px;">Gulf Agency Company (Thailand) Ltd.</div>
+<div style="font-size:12px;">26/30-31 9th Floor, Orakarn Building, Soi Chidlom, Bangkok 10330</div>
+<div style="font-size:11px;">Tax ID: 0105535169497 | Tel: 02-650-7400</div>
+<table class="inv-table"><tr><td><b>Receipt No:</b> {running}</td><td style="text-align:right;"><b>Date:</b> {date}</td></tr>
+<tr><td colspan="2"><b>Invoice No:</b> {invoice_no}</td></tr>
+<tr><td colspan="2"><b>Customer:</b> {customer}</td></tr>
+<tr><td colspan="2"><b>Address:</b> {address}</td></tr></table>
+<table class="inv-table"><tr><th>Description</th><th style="text-align:right;">NON VAT</th><th style="text-align:right;">VAT 7%</th><th style="text-align:right;">Amount</th></tr>"""
     
-    # Add items to HTML
+    # Add items
     try:
         items = invoice_data.get('items', [])
         if not items and invoice_data.get('items_json'):
             import json
             items = json.loads(invoice_data.get('items_json', '[]'))
-        
-        for item in items[:10]:  # Show max 10 items
-            desc = item.get('description', item.get('desc', '-'))[:40]
+        for item in items[:10]:
+            desc = item.get('description', '-')[:40]
             amt = float(item.get('amount', 0))
-            a4_html += f"""
-            <tr>
-                <td>{desc}</td>
-                <td style="text-align:right;">-</td>
-                <td style="text-align:right;">฿{amt*0.07:,.2f}</td>
-                <td style="text-align:right;">฿{amt:,.2f}</td>
-            </tr>"""
+            a4_html += f"<tr><td>{desc}</td><td style=\"text-align:right;\">-</td><td style=\"text-align:right;\">฿{amt*0.07:,.2f}</td><td style=\"text-align:right;\">฿{amt:,.2f}</td></tr>"
     except:
         pass
     
     a4_html += f"""
-        </table>
-        
-        <div class="invoice-total">
-            <table style="width:100%;">
-                <tr>
-                    <td><b>Subtotal ({currency}):</b></td>
-                    <td style="text-align:right;"><b>฿{subtotal:,.2f}</b></td>
-                </tr>
-                <tr>
-                    <td><b>VAT 7%:</b></td>
-                    <td style="text-align:right;"><b>฿{vat:,.2f}</b></td>
-                </tr>
-                <tr style="font-size:18px;">
-                    <td><b>GRAND TOTAL (THB):</b></td>
-                    <td style="text-align:right;"><b style="color:#0066b2;">฿{subtotal+vat:,.2f}</b></td>
-                </tr>
-            </table>
-        </div>
-        
-        <div style="text-align:center;margin-top:30px;font-size:12px;color:#666666;">
-            Thank you for your business!
-        </div>
-    </div>"""
+</table>
+<div class="inv-total">
+<table style="width:100%;"><tr><td><b>Subtotal:</b></td><td style="text-align:right;"><b>฿{total_thb-vat:,.2f}</b></td></tr>
+<tr><td><b>VAT 7%:</b></td><td style="text-align:right;"><b>฿{vat:,.2f}</b></td></tr>
+<tr style="font-size:18px;"><td><b>GRAND TOTAL:</b></td><td style="text-align:right;"><b style="color:#0066b2;">฿{total_thb:,.2f}</b></td></tr></table>
+</div>
+<div style="text-align:center;margin-top:30px;font-size:12px;">Thank you for your business!</div>
+</div></div>"""
     
-    st.markdown(f'<div style="background-color: #f2f2f2; padding: 50px 0;">{a4_html}</div>', unsafe_allow_html=True)
+    st.markdown(a4_html, unsafe_allow_html=True)
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
