@@ -562,9 +562,9 @@ def generate_pdf(invoice_data):
     
     # Totals in both USD and THB
     totals = [
-        ['Subtotal:', f"฿{float(invoice_data['subtotal']) * float(invoice_data['exchange_rate']):,.2f}"],
-        ['VAT 7%:', f"฿{float(invoice_data['vat_amount']) * float(invoice_data['exchange_rate']):,.2f}"],
-        ['TOTAL:', f"฿{float(invoice_data['total_thb']):,.2f}"],\
+        ['Subtotal:', f"฿{float(invoice_data.get('subtotal', 0) or 0) * float(invoice_data.get('exchange_rate', 1) or 1):,.2f}"],
+        ['VAT 7%:', f"฿{float(invoice_data.get('vat_amount', 0) or 0) * float(invoice_data.get('exchange_rate', 1) or 1):,.2f}"],
+        ['TOTAL:', f"฿{float(invoice_data.get('total_thb', 0) or 0):,.2f}"],\
 
     ]
     
@@ -1898,7 +1898,10 @@ def show_pdf_preview(invoice_data, key_suffix=""):
     # Items table
     st.markdown("#### รายการ")
     df = pd.DataFrame(processed_items)
-    st.dataframe(df[['item_no', 'description', 'amount', 'vat_rate', 'vat_amount']], use_container_width=True)
+    if not df.empty:
+        st.dataframe(df[['item_no', 'description', 'amount', 'vat_rate', 'vat_amount']], use_container_width=True)
+    else:
+        st.info('ไม่มีรายการสินค้า')
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
@@ -2004,16 +2007,27 @@ def show_single_invoice_preview(invoice_data, key_suffix=""):
     with col1:
         st.metric("Running No", "Auto")
     with col2:
-        st.metric("Subtotal", f"${float(invoice_data['subtotal']):,.2f}")
-    with col3:
-        st.metric("VAT", f"${float(invoice_data['vat_amount']):,.2f}")
-    with col4:
-        st.metric("Total", f"${float(invoice_data['total_amount']):,.2f}")
+        subtotal = float(invoice_data.get("subtotal", 0) or 0)
+        vat = float(invoice_data.get("vat_amount", 0) or 0)
+        total = float(invoice_data.get("total_thb", 0) or 0)
+
+    # Auto-calculate if missing
+    if subtotal == 0 and invoice_data.get("items"):
+        subtotal = sum(float(item.get("amount", 0)) for item in invoice_data.get("items", []))
+        vat = subtotal * 0.07
+        total = subtotal + vat
+
+    st.metric("Subtotal", f"฿{subtotal:,.2f}")
+    st.metric("VAT 7%", f"฿{vat:,.2f}")
+    st.metric("Total", f"฿{total:,.2f}")
     
     # Items table
     st.markdown("#### รายการ")
-    df = pd.DataFrame(invoice_data['items'])
-    st.dataframe(df[['item_no', 'description', 'amount', 'vat_rate', 'vat_amount']], use_container_width=True)
+    df = pd.DataFrame(invoice_data.get('items', []))
+    if not df.empty:
+        st.dataframe(df[['item_no', 'description', 'amount', 'vat_rate', 'vat_amount']], use_container_width=True)
+    else:
+        st.info('ไม่มีรายการสินค้า')
     
     # Generate buttons
     st.markdown("### 🧾 ออกเอกสาร")
